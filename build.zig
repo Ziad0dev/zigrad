@@ -108,6 +108,12 @@ const exercises = [_]Exercise{
     .{ .file = "093_positions.zig", .hint = "freq is 1 / 10000^e. Even indexes use sin, odd ones cos. The rotation is 055's R(angle) applied to (a, b)." },
     .{ .file = "094_kv_cache.zig", .hint = "append copies v like k and bumps len. Scores are dot(q, key j) / sqrt(dim). Without a cache, step t projects t tokens." },
     .{ .file = "095_flash_attention.zig", .hint = "correction = e^(m - m_new), applied to both l and acc. Each new term adds p to l and p * value to acc. Finish with acc / l." },
+    .{ .file = "096_losses.zig", .hint = "The Huber branches and the stable BCE formula are in the comment. The BCE gradient is sigmoid(z) - y." },
+    .{ .file = "097_lr_schedules.zig", .hint = "Warmup ramps up by (t+1)/warmup. The decay is the half-cosine formula, with progress running 0 to 1." },
+    .{ .file = "098_weight_decay.zig", .hint = "L2 adds wd * w to the gradient. AdamW subtracts lr * wd * w after the normal step." },
+    .{ .file = "099_grad_clipping.zig", .hint = "Sum the squares of EVERY gradient, then take one square root. Scale everything by max_norm / norm." },
+    .{ .file = "100_mixed_precision.zig", .hint = "Scale up before storing in f16, divide back after. On overflow halve the scale; after `interval` good steps double it." },
+    .{ .file = "101_overfitting.zig", .hint = "Each power is the previous one times x. Ridge adds lambda to the diagonal. MSE is the mean of the squared errors." },
 };
 
 pub fn build(b: *std.Build) void {
