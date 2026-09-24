@@ -66,6 +66,23 @@ const exercises = [_]Exercise{
     .{ .file = "051_jit.zig", .hint = "A replay does what capture did, minus the schedule() call." },
     .{ .file = "052_compile.zig", .hint = "The comment shows the zig cc command. A C function pointer type needs callconv(.c), and arrays pass to [*] pointers directly." },
     .{ .file = "053_multi_device.zig", .hint = "Round the slice size up: (n + d - 1) / d. The last slice stops at n. The all-reduce writes the mean back into every slot." },
+    .{ .file = "054_vectors.zig", .hint = "Length is the square root of a vector dotted with itself. Cosine divides the dot product by both lengths." },
+    .{ .file = "055_linear_maps.zig", .hint = "Row 1 of M·x mirrors row 0. In a product, entry [i][j] is row i of a dotted with column j of b." },
+    .{ .file = "056_transpose.zig", .hint = "Element (i, j) of A moves to (j, i) of Aᵀ, which has `rows` columns. For Aᵀy, read A normally but add into out[j]." },
+    .{ .file = "057_solve.zig", .hint = "The factor is what makes row r's entry in this column zero. Whatever you do to a row of A, do to b too." },
+    .{ .file = "058_eigen.zig", .hint = "Normalize by the length of A·v. The Rayleigh quotient is dot(v, A v). Stability needs lr * λ < 2." },
+    .{ .file = "059_outer_products.zig", .hint = "Every (i, j) is u[i] * v[j]. Accumulate one outer product per k. LoRA trains B and A, not W." },
+    .{ .file = "060_distributions.zig", .hint = "Box-Muller is written out in the comment. Shift by mu and stretch by sigma. The wobble shrinks like 1/sqrt(n)." },
+    .{ .file = "061_likelihood.zig", .hint = "Copy the log density from the comment. NLL subtracts log-likelihoods. BCE picks log p or log(1 - p) using y." },
+    .{ .file = "062_entropy.zig", .hint = "Each formula is a sum of p[i] times some log, and the comment has all three." },
+    .{ .file = "063_sampling.zig", .hint = "Temperature divides the logits. Sampling stops at the first running total above u. top-k zeroes everything below the k-th largest." },
+    .{ .file = "064_counter_rng.zig", .hint = "24 bits divided by 2^24 lands in [0, 1). The exponent trick ORs the bits into 1.0's pattern, then subtracts 1." },
+    .{ .file = "065_jacobian.zig", .hint = "Column j comes from nudging input j. Row i is output i. J is stored row-major with n columns." },
+    .{ .file = "066_vjp.zig", .hint = "Each shortcut is in the comment: mask, Aᵀv, broadcast, and p times (v - dot(v, p))." },
+    .{ .file = "067_forward_vs_reverse.zig", .hint = "Forward goes J1, J2, J3 in order. Reverse goes J3, J2, J1. Forward needs one pass per input, reverse one per output." },
+    .{ .file = "068_tensor_autograd.zig", .hint = "The comment's rule table maps straight onto the index maths. A bias position j collects every row's grad." },
+    .{ .file = "069_symbolic_grad.zig", .hint = "Same rules as exercise 030, but build nodes with g.mul, g.cos and g.sin instead of computing numbers." },
+    .{ .file = "070_newton.zig", .hint = "Root: x - f/f'. Minimum: x - f'/f''. And f'' is just the grad of the grad." },
 };
 
 pub fn build(b: *std.Build) void {
