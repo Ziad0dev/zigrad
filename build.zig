@@ -56,6 +56,16 @@ const exercises = [_]Exercise{
     .{ .file = "041_linearize.zig", .hint = "Sources must be emitted before the node that uses them. And remember each node's number, or it gets emitted twice." },
     .{ .file = "042_render.zig", .hint = "Same idea as dump() in 041, but in C. C spells max as fmaxf." },
     .{ .file = "043_run.zig", .hint = "Each instruction reads its operands from earlier registers. A reduce kernel adds each result into acc." },
+    .{ .file = "044_roofline.zig", .hint = "Each formula is written out in the comment. Flops for a matmul: a multiply and an add for each of the n^3 terms." },
+    .{ .file = "045_upcast.zig", .hint = "Each of the four accumulators takes one of the four elements. Vectors add with +, and @reduce(.Add, v) sums the lanes." },
+    .{ .file = "046_tiling.zig", .hint = "Inside a tile it's the ordinary matmul, just with ta and tb. Every loaded number gets used T times." },
+    .{ .file = "047_parallel_reduce.zig", .hint = "Pair i adds elements 2i and 2i+1. An odd leftover moves up a level, and the next level has half the values, plus that leftover." },
+    .{ .file = "048_beam_search.zig", .hint = "Stop if even the fastest candidate isn't better than the best so far. Keep at most `width` candidates, fewer if there aren't that many." },
+    .{ .file = "049_dtypes.zig", .hint = "bf16 is the top 16 bits: shift right to convert, shift left (as a u32) to go back. Quantize: divide by the scale and round." },
+    .{ .file = "050_memory_planner.zig", .hint = "Remember the latest step that reads each buffer. A free slot fits if it's the same size, and a buffer is freed after its last read." },
+    .{ .file = "051_jit.zig", .hint = "A replay does what capture did, minus the schedule() call." },
+    .{ .file = "052_compile.zig", .hint = "The comment shows the zig cc command. A C function pointer type needs callconv(.c), and arrays pass to [*] pointers directly." },
+    .{ .file = "053_multi_device.zig", .hint = "Round the slice size up: (n + d - 1) / d. The last slice stops at n. The all-reduce writes the mean back into every slot." },
 };
 
 pub fn build(b: *std.Build) void {
@@ -87,6 +97,14 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
         }
     }
 
+    // Put this zig first on PATH, so exercises that run `zig cc` (052)
+    // use the same compiler as the build.
+    var env = try b.graph.environ_map.clone(b.allocator);
+    const zig_dir = std.fs.path.dirname(b.graph.zig_exe) orelse ".";
+    const old_path = env.get("PATH") orelse "";
+    const sep = if (@import("builtin").os.tag == .windows) ";" else ":";
+    try env.put("PATH", b.fmt("{s}{s}{s}", .{ zig_dir, sep, old_path }));
+
     for (exercises, 1..) |ex, n| {
         if (check.only) |only| if (only != n) continue;
         const rel = b.pathJoin(&.{ check.dir, ex.file });
@@ -95,6 +113,7 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
         const result = try std.process.run(b.allocator, b.graph.io, .{
             .argv = &.{ b.graph.zig_exe, "test", b.pathFromRoot(rel) },
             .cwd = .{ .path = b.pathFromRoot(".") },
+            .environ_map = &env,
         });
         const passed = switch (result.term) {
             .exited => |code| code == 0,
@@ -117,8 +136,8 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
         p(
             \\
             \\All {d} exercises pass. You rebuilt the core of tinygrad:
-            \\views, primitive ops, a lazy graph, autograd, training, and a
-            \\compiler with a device to run on.
+            \\views, primitive ops, a lazy graph, autograd, training, a
+            \\compiler, fast kernels, and a runtime that compiles and runs them.
             \\
             \\See it all in one piece:  zig run examples/tinygrad_in_one_file.zig
             \\

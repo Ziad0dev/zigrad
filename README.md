@@ -46,6 +46,8 @@ Stuck? Every exercise has a finished version in `solutions/`. Try for a while fi
 | 6. Tensor gradients | 033–036 | gradients of broadcasting and movement ops; matmul gradient; cross-entropy |
 | 7. Training | 037–039 | weight initialization; momentum and Adam; training a network on XOR |
 | 8. The compiler | 040–043 | scheduling and kernel fusion; linearizing to instructions; rendering C; running kernels on a tiny device |
+| 9. Fast kernels | 044–048 | the roofline model; unrolling and SIMD upcasting; tiling for data reuse; parallel tree reductions; BEAM search over kernel variants |
+| 10. The runtime | 049–053 | f16, bf16 and int8 quantization; memory planning; the JIT; compiling C with `zig cc` and loading it with `std.DynLib`; sharding and all-reduce across devices |
 
 Want the whole picture before you start? `examples/tinygrad_in_one_file.zig` puts every piece together in about 500 lines:
 
@@ -53,12 +55,15 @@ Want the whole picture before you start? `examples/tinygrad_in_one_file.zig` put
 zig run examples/tinygrad_in_one_file.zig
 ```
 
-## Where next
+## Afterwards
 
-The exercises cover tinygrad's core ideas. Things real tinygrad does that aren't here yet:
+Once every exercise passes, you've met every major piece of tinygrad. Its source is the best next read: [tinygrad/tinygrad](https://github.com/tinygrad/tinygrad). The names you'll see there (`UOp`, `graph_rewrite`, `PatternMatcher`, `ShapeTracker`/views, the scheduler, renderers, `BEAM`, `TinyJit`) are what you've just built.
 
-- kernel optimizations: unrolling, upcasting, tiling into local/shared memory, tensor cores
-- BEAM search: timing many versions of each kernel and keeping the fastest
-- the JIT: capturing a whole step's kernels once and replaying them
-- actually compiling rendered kernels (Zig can: `zig cc` plus `std.DynLib`)
-- dtypes (half, int8...), multiple devices, memory planning
+## Maintaining the exercises
+
+Every exercise must fail as shipped, and its solution must pass:
+
+```sh
+zig build -Dsolutions                 # every solution passes
+for f in exercises/*.zig; do zig test "$f" >/dev/null 2>&1 && echo "passes already: $f"; done
+```
