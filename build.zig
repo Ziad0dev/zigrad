@@ -88,6 +88,12 @@ const exercises = [_]Exercise{
     .{ .file = "073_views_as_indexes.zig", .hint = "i_k is (g // inner) % shape[k]. Add i_k * stride to the running position." },
     .{ .file = "074_stacked_views.zig", .hint = "Merging needs stride[k] == stride[k+1] * shape[k+1]. Unravel flat over the old shape, then ask the old view for the position." },
     .{ .file = "075_symbolic_shapes.zig", .hint = "Record the step, then multiply it by this dimension's size. At run time, bind n to its current value." },
+    .{ .file = "076_reduce_codegen.zig", .hint = "Reduce loops open exactly like the global ones, with ridx. The body adds into acc, and each closing brace goes up one level." },
+    .{ .file = "077_gpu_grid.zig", .hint = "Round up: (n + bs - 1) / bs. A thread's global id is its block's start plus its own id. Guard with gid >= n." },
+    .{ .file = "078_shared_memory.zig", .hint = "Threads below the stride add in the value `stride` places to their right." },
+    .{ .file = "079_opt_ops.zig", .hint = "The amount must divide the size, and the old axis keeps size / amount. Threads per block come from local axes, outputs per thread from upcast axes." },
+    .{ .file = "080_tensor_cores.zig", .hint = "Widen each f16 to f32 before multiplying. Tile (bi, bk) of A starts at row bi and column bk." },
+    .{ .file = "081_store_or_recompute.zig", .hint = "Both formulas are in the comment. Recompute when it's no slower." },
 };
 
 pub fn build(b: *std.Build) void {
