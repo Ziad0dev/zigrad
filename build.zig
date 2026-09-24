@@ -83,6 +83,11 @@ const exercises = [_]Exercise{
     .{ .file = "068_tensor_autograd.zig", .hint = "The comment's rule table maps straight onto the index maths. A bias position j collects every row's grad." },
     .{ .file = "069_symbolic_grad.zig", .hint = "Same rules as exercise 030, but build nodes with g.mul, g.cos and g.sin instead of computing numbers." },
     .{ .file = "070_newton.zig", .hint = "Root: x - f/f'. Minimum: x - f'/f''. And f'' is just the grad of the grad." },
+    .{ .file = "071_index_bounds.zig", .hint = "add: add the ends. mul: min and max of the four corner products. mod: if x already fits in [0, d), keep its range." },
+    .{ .file = "072_index_simplify.zig", .hint = "Use bounds() for the range rules. For (x*d + y) // d, the answer is x + y // d. recombine needs q to be exactly x // d." },
+    .{ .file = "073_views_as_indexes.zig", .hint = "i_k is (g // inner) % shape[k]. Add i_k * stride to the running position." },
+    .{ .file = "074_stacked_views.zig", .hint = "Merging needs stride[k] == stride[k+1] * shape[k+1]. Unravel flat over the old shape, then ask the old view for the position." },
+    .{ .file = "075_symbolic_shapes.zig", .hint = "Record the step, then multiply it by this dimension's size. At run time, bind n to its current value." },
 };
 
 pub fn build(b: *std.Build) void {
