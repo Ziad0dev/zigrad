@@ -118,6 +118,11 @@ const exercises = [_]Exercise{
     .{ .file = "103_mlp_classifier.zig", .hint = "forward is matmul, addBias, relu, matmul, addBias. Each step: zero every grad, backward, then w -= lr * g. Accuracy compares argmax with the label." },
     .{ .file = "104_cnn.zig", .hint = "Patch pixel (i, j) at output (oy, ox) is input pixel (oy + i, ox + j) of image b. Flatten to [batch, positions * filters]." },
     .{ .file = "105_evaluation.zig", .hint = "Count c[truth][predicted]. Precision sums a column, recall sums a row. F1 is the harmonic mean." },
+    .{ .file = "106_command_queues.zig", .hint = "Each submit takes the next value up. A command is blocked while the other queue's signal is below what it waits for. wait() keeps ticking until the signal catches up." },
+    .{ .file = "107_overlap.zig", .hint = "The formulas are in the comment. A compute starts when both its copy and the compute engine are ready: the later of the two times." },
+    .{ .file = "108_launch_overhead.zig", .hint = "Plain pays a launch per kernel, a graph pays one launch in total. Speedup is plain / graph." },
+    .{ .file = "109_ring_allreduce.zig", .hint = "Reduce-scatter sends chunk (d - s) mod N and ADDS. All-gather sends chunk (d + 1 - s) mod N and COPIES. Add n_dev before subtracting so nothing goes negative." },
+    .{ .file = "110_safetensors.zig", .hint = "The first 8 bytes are a little-endian u64. Raw data starts right after the header, and offsets count from there." },
 };
 
 pub fn build(b: *std.Build) void {
@@ -187,11 +192,12 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
     if (check.only == null) {
         p(
             \\
-            \\All {d} exercises pass. You rebuilt the core of tinygrad:
-            \\views, primitive ops, a lazy graph, autograd, training, a
-            \\compiler, fast kernels, and a runtime that compiles and runs them.
+            \\All {d} exercises pass. From flat memory to transformers, from the
+            \\chain rule to tensor cores: you've built every major piece of tinygrad,
+            \\and the maths underneath it.
             \\
-            \\See it all in one piece:  zig run examples/tinygrad_in_one_file.zig
+            \\Next: read tinygrad's own source (github.com/tinygrad/tinygrad). You'll
+            \\recognize it.
             \\
         , .{exercises.len});
     }
