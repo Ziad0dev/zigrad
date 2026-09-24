@@ -1,7 +1,8 @@
-//! Lesson 1: how tinygrad works, rebuilt small in Zig.
+//! How tinygrad works, rebuilt small in one Zig file. The exercises build
+//! each of these pieces step by step; this is the whole picture at once.
 //!
-//!   Run it:   zig run lessons/01_tinygrad_basics.zig
-//!   Test it:  zig test lessons/01_tinygrad_basics.zig
+//!   Run it:   zig run examples/tinygrad_in_one_file.zig
+//!   Test it:  zig test examples/tinygrad_in_one_file.zig
 //!
 //! tinygrad in one sentence: you build a *graph* out of a handful of
 //! primitive ops, nothing is computed until you ask for a result, and then
@@ -9,7 +10,7 @@
 //! Gradients come from walking that same graph backwards.
 //!
 //! This file does exactly that, with 1-D tensors of f32 and 7 ops.
-//! Tested with Zig 0.15.1.
+//! Tested with Zig 0.16.0.
 
 const std = @import("std");
 
