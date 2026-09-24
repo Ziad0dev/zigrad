@@ -94,6 +94,14 @@ const exercises = [_]Exercise{
     .{ .file = "079_opt_ops.zig", .hint = "The amount must divide the size, and the old axis keeps size / amount. Threads per block come from local axes, outputs per thread from upcast axes." },
     .{ .file = "080_tensor_cores.zig", .hint = "Widen each f16 to f32 before multiplying. Tile (bi, bk) of A starts at row bi and column bk." },
     .{ .file = "081_store_or_recompute.zig", .hint = "Both formulas are in the comment. Recompute when it's no slower." },
+    .{ .file = "082_linear_layer.zig", .hint = "db collects every example's g. dX uses W (walked as if transposed), and dW uses X." },
+    .{ .file = "083_layernorm.zig", .hint = "1/σ is 1 / sqrt(var + eps), and x̂ is (x - μ) / σ. The dx formula is in the comment, term for term." },
+    .{ .file = "084_batchnorm.zig", .hint = "Batch statistics average down each column. The running value moves `momentum` of the way toward the batch value. Eval uses only the running values." },
+    .{ .file = "085_conv2d.zig", .hint = "(size + 2*pad - k) / stride + 1. A tap is inside when 0 <= y < h and 0 <= x < w." },
+    .{ .file = "086_conv2d_backward.zig", .hint = "dW is dOut times colsᵀ. col2im walks the same indexes as im2col, but ADDS into dx instead of reading from x." },
+    .{ .file = "087_pooling.zig", .hint = "Max keeps the biggest and remembers where it was. Average divides by 4. In backward, max sends the gradient to the winner and average splits it 4 ways." },
+    .{ .file = "088_embeddings.zig", .hint = "Lookup copies row `id`. Backward ADDS into row `id`. One-hot is 1 exactly where v == id." },
+    .{ .file = "089_dropout.zig", .hint = "Keep a value when uniform >= p, and scale survivors by 1/(1-p). Eval copies x unchanged. Backward uses the same mask." },
 };
 
 pub fn build(b: *std.Build) void {
