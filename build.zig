@@ -114,6 +114,10 @@ const exercises = [_]Exercise{
     .{ .file = "099_grad_clipping.zig", .hint = "Sum the squares of EVERY gradient, then take one square root. Scale everything by max_norm / norm." },
     .{ .file = "100_mixed_precision.zig", .hint = "Scale up before storing in f16, divide back after. On overflow halve the scale; after `interval` good steps double it." },
     .{ .file = "101_overfitting.zig", .hint = "Each power is the previous one times x. Ridge adds lambda to the diagonal. MSE is the mean of the squared errors." },
+    .{ .file = "102_data_pipeline.zig", .hint = "Fisher-Yates picks j in [0, i] (so i + 1 choices) and swaps. Normalize with (x - mean) / sd. The last batch stops at n." },
+    .{ .file = "103_mlp_classifier.zig", .hint = "forward is matmul, addBias, relu, matmul, addBias. Each step: zero every grad, backward, then w -= lr * g. Accuracy compares argmax with the label." },
+    .{ .file = "104_cnn.zig", .hint = "Patch pixel (i, j) at output (oy, ox) is input pixel (oy + i, ox + j) of image b. Flatten to [batch, positions * filters]." },
+    .{ .file = "105_evaluation.zig", .hint = "Count c[truth][predicted]. Precision sums a column, recall sums a row. F1 is the harmonic mean." },
 };
 
 pub fn build(b: *std.Build) void {
