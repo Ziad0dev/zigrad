@@ -102,6 +102,12 @@ const exercises = [_]Exercise{
     .{ .file = "087_pooling.zig", .hint = "Max keeps the biggest and remembers where it was. Average divides by 4. In backward, max sends the gradient to the winner and average splits it 4 ways." },
     .{ .file = "088_embeddings.zig", .hint = "Lookup copies row `id`. Backward ADDS into row `id`. One-hot is 1 exactly where v == id." },
     .{ .file = "089_dropout.zig", .hint = "Keep a value when uniform >= p, and scale survivors by 1/(1-p). Eval copies x unchanged. Backward uses the same mask." },
+    .{ .file = "090_attention.zig", .hint = "A score is dot(query i, key j) times the scale. The output is the weighted sum of the value rows." },
+    .{ .file = "091_causal_mask.zig", .hint = "Keys after the query (j > i) are the future. Give them -infinity." },
+    .{ .file = "092_multi_head.zig", .hint = "Head h's dimension j of token tok sits at tok * width + h * dh + j, both when reading and when writing back." },
+    .{ .file = "093_positions.zig", .hint = "freq is 1 / 10000^e. Even indexes use sin, odd ones cos. The rotation is 055's R(angle) applied to (a, b)." },
+    .{ .file = "094_kv_cache.zig", .hint = "append copies v like k and bumps len. Scores are dot(q, key j) / sqrt(dim). Without a cache, step t projects t tokens." },
+    .{ .file = "095_flash_attention.zig", .hint = "correction = e^(m - m_new), applied to both l and acc. Each new term adds p to l and p * value to acc. Finish with acc / l." },
 };
 
 pub fn build(b: *std.Build) void {
