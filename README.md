@@ -2,7 +2,7 @@
 
 A zero-to-hero course on [tinygrad](https://github.com/tinygrad/tinygrad), on deep learning, and on the maths underneath both, taught by rebuilding it all in Zig one small broken program at a time. The format follows [ziglings](https://codeberg.org/ziglings/exercises).
 
-There are 110 exercises. Each one teaches a single idea in its comments, then leaves you a hole or a bug to fix. Fix it and the tests at the bottom pass. You don't need any maths beyond school algebra, or any prior Zig: both are introduced as they come up.
+There are 160 exercises in three parts. Each one teaches a single idea in its comments, then leaves you a hole or a bug to fix. Fix it and the tests at the bottom pass. You don't need any maths beyond school algebra, or any prior Zig: both are introduced as they come up.
 
 ## Getting started
 
@@ -64,11 +64,30 @@ Stuck? Every exercise has a finished version in `solutions/`. Try for a while fi
 | 19. Capstone | 102–105 | a data pipeline, then an MLP and a CNN trained to >90% on noisy digits, then evaluation beyond accuracy |
 | 20. Down to the metal | 106–110 | command queues and signals; overlapping copies with compute; launch overhead and graphs; ring all-reduce; loading safetensors |
 
+## Part III: the rest of the map
+
+| Chapter | Exercises | You learn |
+|---|---|---|
+| 21. Sequence models | 111–115 | RNNs; backpropagation through time; vanishing and exploding gradients; LSTMs; residual connections |
+| 22. Language modeling | 116–120 | tokenizing text; byte-pair encoding; bigram models; perplexity; a neural model that rediscovers the counts |
+| 23. Generative models | 121–125 | PCA; the maths of VAEs; diffusion, forward and reverse; GAN losses |
+| 24. Reinforcement learning | 126–130 | bandits; the Bellman equation; Q-learning; policy gradients; reward models and DPO |
+| 25. Optimization theory | 131–135 | convexity; Adagrad and RMSprop; line search; weight averaging; saddle points |
+| 26. Training at scale | 136–140 | gradient accumulation; activation checkpointing; tensor and pipeline parallelism; ZeRO |
+| 27. Efficient inference | 141–145 | int8 matmuls; int4 packing; group-wise quantization; speculative decoding; paged KV caches |
+| 28. Numerics inside kernels | 146–150 | Kahan summation; exp2, sin and log2 from scratch; the fast inverse square root |
+| 29. The memory hierarchy | 151–155 | caches; loop order; coalescing; bank conflicts; register blocking |
+| 30. tinygrad internals | 156–160 | UPat pattern matching; dtype promotion; strength reduction; in-place safety; a final mini-tinygrad capstone |
+
 Want the whole picture before you start? `examples/tinygrad_in_one_file.zig` puts Part I's core together in about 500 lines:
 
 ```sh
 zig run examples/tinygrad_in_one_file.zig
 ```
+
+## Going further
+
+See [RESOURCES.md](RESOURCES.md) for the best books, courses, videos, articles and papers to go with each chapter.
 
 ## Afterwards
 
