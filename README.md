@@ -139,3 +139,7 @@ python3 tools/check_holes.py   # every compile error points at a ??? hole
 GitHub Actions runs all of these on every push (`.github/workflows/check.yml`).
 
 New exercises also need an entry, with a hint, in `build.zig`.
+
+## License
+
+MIT: see [LICENSE](LICENSE).
