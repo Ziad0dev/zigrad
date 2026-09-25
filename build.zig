@@ -4,6 +4,10 @@
 //!   zig build                  check everything, in order
 //!   zig build -Dn=7            check only exercise 7
 //!   zig build -Dsolutions      check the reference solutions instead
+//!   zig build -Dfresh          recheck everything, even exercises that passed before
+//!
+//! Exercises that passed are remembered (in .zig-cache/zigrad), and skipped
+//! next time as long as their file hasn't changed.
 
 const std = @import("std");
 
@@ -173,6 +177,26 @@ const exercises = [_]Exercise{
     .{ .file = "158_strength_reduction.zig", .hint = "A power of two has one set bit: c & (c-1) == 0. Shifts need x >= 0 for division and modulo. The mask is c - 1." },
     .{ .file = "159_inplace.zig", .hint = "It's unsafe exactly when the kernel reads the target buffer at a nonzero offset." },
     .{ .file = "160_mini_tinygrad.zig", .hint = "Every hole matches an earlier exercise, named in the header. The gradient of sum is a broadcast of out[0], and the gradient of expand is a sum." },
+    .{ .file = "161_simd_microkernel.zig", .hint = "Broadcast one number of A to every lane with @splat, then @mulAdd(V, a, b, acc). At the end, store each row vector back into its 8 slots of C." },
+    .{ .file = "162_threads.zig", .hint = "Chunks are ceil(n / t) rows, and the end is capped at n. std.Thread.spawn(.{}, Job.run, .{job}) returns a thread to join." },
+    .{ .file = "163_false_sharing.zig", .hint = "A line is 64 bytes: divide the address. A line is shared when two or more threads write it. The padded stride is one whole line." },
+    .{ .file = "164_amdahl.zig", .hint = "Serial part plus parallel part divided by n, then take 1 over that. Keep adding workers while the speedup is still below the target." },
+    .{ .file = "165_littles_law.zig", .hint = "In flight = bandwidth * latency. With less in flight you get in_flight / latency, but never more than the peak." },
+    .{ .file = "166_occupancy.zig", .hint = "Registers per block are regs_per_thread * threads_per_block; divide the register file by that. Occupancy counts warps: blocks * warps per block." },
+    .{ .file = "167_divergence.zig", .hint = "A warp pays for a path if ANY of its threads takes it. The sorted version just runs branchCost on the sorted copy." },
+    .{ .file = "168_warp_shuffle.zig", .hint = "Lane i reads lane i ^ offset. Each step adds (or maxes) the partner's value into your own." },
+    .{ .file = "169_prefix_scan.zig", .hint = "Add the value d places to the left. After each step, copy the new values back before the next one." },
+    .{ .file = "170_triton_blocks.zig", .hint = "The mask is offs < n_cols, as a vector compare against @splat(n_cols). Masked lanes load -inf, and masked stores skip lanes where the mask is false." },
+    .{ .file = "171_rmsnorm.zig", .hint = "rms is the square root of mean(x^2) + eps. dx is (dy * g - x_hat * m) / rms, with x_hat = x / rms." },
+    .{ .file = "172_swiglu.zig", .hint = "silu is z times sigmoid(z); its slope comes from the product rule. The gate multiplies silu(W1 x) by W3 x. The hidden size is 8d/3." },
+    .{ .file = "173_gqa.zig", .hint = "Heads are grouped: group = q_heads / kv_heads, and head h uses KV head h / group. The cache holds a K and a V for every layer and KV head." },
+    .{ .file = "174_top_p.zig", .hint = "Stop as soon as the running total reaches p. Zero everything after the kept prefix, and divide the kept ones by the total." },
+    .{ .file = "175_moe.zig", .hint = "Mark each chosen expert as used. The weights are a softmax over the chosen logits, shifted by the biggest. Each token adds 1 to each of its K experts." },
+    .{ .file = "176_benchmarking.zig", .hint = "Skip the first `warmup` times. The median of an even count is the average of the two middle ones. GFLOPS is flops / seconds / 1e9." },
+    .{ .file = "177_mfu.zig", .hint = "6 FLOPs per parameter per token. MFU divides the FLOPs you actually do per second by the peak. Days are seconds / 86400." },
+    .{ .file = "178_scaling_laws.zig", .hint = "C = 6 N D and D = 20 N, so C = 120 N^2: N is the square root of C / 120." },
+    .{ .file = "179_decode_speed.zig", .hint = "At batch 1 every token reads all the weights: bandwidth / weight bytes. Compute is 2 N B / peak; set it equal to the memory time and solve for B." },
+    .{ .file = "180_transformer_block.zig", .hint = "q and k both get RoPE at the token's position (cache.len before appending). Bump cache.len after storing. Residuals add the sublayer's output to its input." },
 };
 
 pub fn build(b: *std.Build) void {
@@ -181,6 +205,7 @@ pub fn build(b: *std.Build) void {
         .step = .init(.{ .id = .custom, .name = "check exercises", .owner = b, .makeFn = make }),
         .only = b.option(usize, "n", "Check only exercise number n"),
         .dir = if (b.option(bool, "solutions", "Check the reference solutions") orelse false) "solutions" else "exercises",
+        .fresh = b.option(bool, "fresh", "Recheck exercises that passed before") orelse false,
     };
     b.default_step.dependOn(&check.step);
 }
@@ -189,7 +214,16 @@ const Check = struct {
     step: std.Build.Step,
     only: ?usize,
     dir: []const u8,
+    fresh: bool,
 };
+
+/// A fingerprint of an exercise file (and the compiler), for remembering passes.
+fn fingerprint(contents: []const u8) [16]u8 {
+    var h = std.hash.Wyhash.init(0);
+    h.update(@import("builtin").zig_version_string);
+    h.update(contents);
+    return std.fmt.hex(h.final());
+}
 
 fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
     _ = options;
@@ -212,10 +246,38 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
     const sep = if (@import("builtin").os.tag == .windows) ";" else ":";
     try env.put("PATH", b.fmt("{s}{s}{s}", .{ zig_dir, sep, old_path }));
 
+    // Where passes are remembered: one small file per exercise, holding the
+    // fingerprint of the version that passed.
+    const io = b.graph.io;
+    const memo_dir = b.pathJoin(&.{ "zigrad", check.dir });
+    b.cache_root.handle.createDirPath(io, memo_dir) catch {};
+
+    // Remembered passes are summarized in one line instead of one each.
+    var skipped: usize = 0;
+    var first_skipped: []const u8 = "";
+    var last_skipped: []const u8 = "";
+
     for (exercises, 1..) |ex, n| {
         if (check.only) |only| if (only != n) continue;
         const rel = b.pathJoin(&.{ check.dir, ex.file });
         const name = ex.file[0 .. ex.file.len - ".zig".len];
+
+        const memo = b.pathJoin(&.{ memo_dir, name });
+        const contents = b.build_root.handle.readFileAlloc(io, rel, b.allocator, .limited(1 << 24)) catch "";
+        const print = fingerprint(contents);
+        if (!check.fresh and check.only == null) {
+            const old = b.cache_root.handle.readFileAlloc(io, memo, b.allocator, .limited(64)) catch "";
+            if (std.mem.eql(u8, old, &print)) {
+                if (skipped == 0) first_skipped = name;
+                last_skipped = name;
+                skipped += 1;
+                continue;
+            }
+        }
+        if (skipped > 0) {
+            printSkipped(skipped, first_skipped, last_skipped);
+            skipped = 0;
+        }
 
         const result = try std.process.run(b.allocator, b.graph.io, .{
             .argv = &.{ b.graph.zig_exe, "test", b.pathFromRoot(rel) },
@@ -229,26 +291,38 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
 
         if (passed) {
             p("  ✓ {s}\n", .{name});
+            b.cache_root.handle.writeFile(io, .{ .sub_path = memo, .data = &print }) catch {};
             continue;
         }
 
         p("  ✗ {s}\n\n{s}\n", .{ name, result.stderr });
+        if (check.only == null) p("Progress: {d}/{d} exercises done.\n", .{ n - 1, exercises.len });
         p("Hint: {s}\n\n", .{ex.hint});
         p("Edit {s} and run `zig build` again.\n", .{rel});
         p("Really stuck? The answer is in solutions/{s}\n", .{ex.file});
         std.process.exit(2);
     }
 
+    if (skipped > 0) printSkipped(skipped, first_skipped, last_skipped);
+
     if (check.only == null) {
         p(
             \\
             \\All {d} exercises pass. From flat memory to transformers, from the
-            \\chain rule to tensor cores: you've built every major piece of tinygrad,
-            \\and the maths underneath it.
+            \\chain rule to tensor cores and warp shuffles: you've built every major
+            \\piece of tinygrad, the maths underneath it, and the hardware under that.
             \\
             \\Next: read tinygrad's own source (github.com/tinygrad/tinygrad). You'll
             \\recognize it.
             \\
         , .{exercises.len});
+    }
+}
+
+fn printSkipped(count: usize, first: []const u8, last: []const u8) void {
+    if (count == 1) {
+        std.debug.print("  ✓ {s}\n", .{first});
+    } else {
+        std.debug.print("  ✓ {s} ... {s} ({d} passed before)\n", .{ first, last, count });
     }
 }

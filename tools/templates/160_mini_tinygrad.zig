@@ -1,5 +1,5 @@
 //
-// ─── Exercise 160: the final capstone ──────────────────────────────────
+// ─── Exercise 160: the tinygrad capstone ───────────────────────────────
 //
 // Everything, together. Below is a complete, working mini tinygrad in one
 // file: lazy tensors built from 7 primitive ops (chapters 3-4), kernel
@@ -18,7 +18,8 @@
 // Then run it for real:  zig run exercises/160_mini_tinygrad.zig
 // It prints the kernels it generates and learns y = 2x + 1.
 //
-// Congratulations on making it here. Go read tinygrad.
+// Congratulations: that's all of tinygrad, rebuilt. Part IV (161-180)
+// goes down to the hardware and out to today's models.
 //
 const std = @import("std");
 

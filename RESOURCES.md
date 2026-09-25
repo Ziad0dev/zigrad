@@ -86,6 +86,10 @@ The best books, courses, videos, articles and papers to go with this course, gro
 - [CUDA Programming Guide (NVIDIA)](https://docs.nvidia.com/cuda/cuda-programming-guide/index.html): the reference for GPU threads, blocks, shared memory and the memory model. It replaced the older CUDA C++ Programming Guide. [chapters 15, 20, 29]
 - *Programming Massively Parallel Processors* (Hwu, Kirk, El Hajj): the standard textbook on GPU programming.
 - [What Every Programmer Should Know About Memory (Drepper)](https://people.freebsd.org/~lstewart/articles/cpumemory.pdf): caches, from the hardware up. [chapter 29]
+- [Anatomy of High-Performance Matrix Multiplication (Goto and van de Geijn, 2008)](https://dl.acm.org/doi/10.1145/1356052.1356053): the paper behind GotoBLAS and the microkernel design every fast CPU matmul still uses. [chapter 31]
+- [Algorithms for Modern Hardware (Sergey Slotin)](https://en.algorithmica.org/hpc/): a free online book on making code fast on real CPUs: SIMD, caches, branch prediction, with benchmarks for everything. Still being written. [chapters 29, 31]
+- [Triton tutorials](https://triton-lang.org/main/getting-started/tutorials/index.html): start with [fused softmax](https://triton-lang.org/main/getting-started/tutorials/02-fused-softmax.html), the kernel exercise 170 imitates. [chapter 32]
+- [Parallel Prefix Sum (Scan) with CUDA (GPU Gems 3, chapter 39)](https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-39-parallel-prefix-sum-scan-cuda): Hillis-Steele and Blelloch scans on a GPU, step by step. [chapter 32]
 - [Crafting Interpreters (Robert Nystrom)](https://craftinginterpreters.com/): a free, wonderful book on building languages. The best intro to how compilers think. [chapters 4, 8]
 
 ## Training at scale
@@ -116,12 +120,20 @@ The original papers behind the exercises, all free on arXiv. They're easier to r
 | [GPipe](https://arxiv.org/abs/1811.06965) (2018) | 139 |
 | [Megatron-LM](https://arxiv.org/abs/1909.08053) (2019) | 138 |
 | [ZeRO](https://arxiv.org/abs/1910.02054) (2019) | 140 |
+| [Fast Transformer Decoding: One Write-Head is All You Need (MQA)](https://arxiv.org/abs/1911.02150) (2019) | 173 |
+| [Root Mean Square Layer Normalization (RMSNorm)](https://arxiv.org/abs/1910.07467) (2019) | 171 |
+| [The Curious Case of Neural Text Degeneration (nucleus sampling)](https://arxiv.org/abs/1904.09751) (2019) | 174 |
 | [Denoising Diffusion Probabilistic Models](https://arxiv.org/abs/2006.11239) (2020) | 123-124 |
+| [GLU Variants Improve Transformer (SwiGLU)](https://arxiv.org/abs/2002.05202) (2020) | 172 |
 | [RoFormer (rotary embeddings)](https://arxiv.org/abs/2104.09864) (2021) | 093 |
 | [LoRA](https://arxiv.org/abs/2106.09685) (2021) | 059 |
 | [Training language models to follow instructions (InstructGPT, RLHF)](https://arxiv.org/abs/2203.02155) (2022) | 130 |
 | [FlashAttention](https://arxiv.org/abs/2205.14135) (2022) | 095 |
 | [GPTQ](https://arxiv.org/abs/2210.17323) (2022) | 143 |
 | [Fast Inference via Speculative Decoding](https://arxiv.org/abs/2211.17192) (2022) | 144 |
+| [Training Compute-Optimal Large Language Models (Chinchilla)](https://arxiv.org/abs/2203.15556) (2022) | 178 |
+| [PaLM (introduces MFU)](https://arxiv.org/abs/2204.02311) (2022) | 177 |
 | [Direct Preference Optimization](https://arxiv.org/abs/2305.18290) (2023) | 130 |
 | [PagedAttention (vLLM)](https://arxiv.org/abs/2309.06180) (2023) | 145 |
+| [GQA](https://arxiv.org/abs/2305.13245) (2023) | 173 |
+| [Mixtral of Experts](https://arxiv.org/abs/2401.04088) (2024) | 175 |

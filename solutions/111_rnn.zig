@@ -6,7 +6,7 @@
 // Part III covers what's left: other kinds of models (21-24), deeper
 // optimization (25), training and serving at scale (26-27), how kernels
 // really compute math functions (28), the memory hierarchy (29), and
-// tinygrad's own internals (30), ending with a final capstone.
+// tinygrad's own internals (30), ending with a mini-tinygrad capstone.
 //
 // ─── Exercise 111: recurrent networks ──────────────────────────────────
 //
