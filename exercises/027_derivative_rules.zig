@@ -2,8 +2,8 @@
 // ─── Exercise 027: the rules ───────────────────────────────────────────
 //
 // Measuring slopes is slow and inexact. For each primitive op there's an
-// exact formula for its derivative instead. These are the ones tinygrad
-// needs:
+// exact formula for its derivative instead. Here are the ones for
+// tinygrad's one-input primitives, after x^2 as a warm-up:
 //
 //   x^2      ->  2x            Power rule: (x^n)' = n * x^(n-1).
 //                              Check: at x = 3 the slope is 6, like
@@ -22,9 +22,9 @@
 //   sin(x)   ->  cos(x)        The slope of a sine wave is a cosine wave:
 //                              steepest where sin crosses 0, flat at its peaks.
 //
-// tinygrad stores exactly this kind of table: for each primitive op, how
-// to compute its gradient. Everything else gets gradients by combining
-// these (next exercise).
+// tinygrad stores exactly this kind of table (`pm_gradient`): for each
+// primitive op, how to compute its gradient. Everything else gets
+// gradients by combining these (next exercise).
 //
 // YOUR TASK: write each derivative. The test compares them against
 // measured slopes.

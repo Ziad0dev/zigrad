@@ -20,7 +20,9 @@
 // tinygrad, NumPy and PyTorch all allow this.
 //
 // (What if the view ISN'T contiguous, e.g. transposed? New strides can't
-// always describe that, so tinygrad makes a contiguous copy first.)
+// always describe that. NumPy and PyTorch's reshape then make a copy.
+// tinygrad still doesn't: it stacks a second view on top of the first
+// (exercise 074), or in newer versions composes the index maths (073).)
 //
 // Zig notes: this is our first function that can fail. `error{ShapeMismatch}!View`
 // means "a View, or the error ShapeMismatch". `return error.ShapeMismatch`

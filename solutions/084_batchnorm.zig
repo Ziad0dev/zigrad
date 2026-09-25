@@ -19,9 +19,10 @@
 //   eval:      use the running averages, so each output depends only on
 //              its own input
 //
-// Forgetting to switch modes is a classic bug, and it's why tinygrad (like
-// PyTorch) has Tensor.training, a flag layers like BatchNorm and Dropout
-// (089) check.
+// Forgetting to switch modes is a classic bug. It's why tinygrad has a
+// global TRAINING flag (set with `with Context(TRAINING=1):`), and
+// PyTorch has model.train() and model.eval(): layers like BatchNorm and
+// Dropout (089) check it.
 //
 // (The backward pass is LayerNorm's, applied down columns instead of along
 // rows.)

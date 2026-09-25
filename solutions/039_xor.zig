@@ -26,7 +26,7 @@
 //     4. step:     w -= lr * w.grad, for every weight
 //
 // In tinygrad those are opt.zero_grad(), loss = ..., loss.backward() and
-// opt.step().
+// opt.step(), inside `with Context(TRAINING=1):` (training mode).
 //
 // The weights live across steps, so they're allocated once, outside the
 // loop. Each step's graph lives in an arena that's reset every step.

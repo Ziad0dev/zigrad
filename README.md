@@ -99,7 +99,7 @@ See [RESOURCES.md](RESOURCES.md) for the best books, courses, videos, articles a
 
 ## Afterwards
 
-Read tinygrad's own source. The names you'll meet there (`UOp`, `graph_rewrite`, `PatternMatcher`, views, the scheduler, renderers, OptOps, `BEAM`, `TinyJit`, HCQ) are all things you've built. tinygrad changes quickly, so details will differ, but the ideas are the ones in this course.
+Read tinygrad's own source. The names you'll meet there (`UOp`, `graph_rewrite`, `PatternMatcher`, `UPat`, movement ops, the scheduler, renderers, OptOps, `BEAM`, `TinyJit`, HCQ) are all things you've built. tinygrad changes quickly, so details will differ, but the ideas are the ones in this course. Every tinygrad fact in the exercises was checked against its source as of September 2026.
 
 ## Maintaining the exercises
 

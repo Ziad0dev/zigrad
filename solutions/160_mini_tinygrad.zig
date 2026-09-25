@@ -152,7 +152,7 @@ pub const Tensor = struct {
 
     // ─── 4. Realize: turning the lazy graph into actual work ────────────
     //
-    // Kernel rule, same idea as tinygrad's scheduler:
+    // Kernel rule, a simpler version of tinygrad's scheduler (040):
     //   * a chain of elementwise ops (add, mul, max, expand, constant)
     //     is FUSED into one loop, with no temporary arrays in between;
     //   * a reduce (sum) needs every input before it can finish, so it

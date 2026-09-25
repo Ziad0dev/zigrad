@@ -20,9 +20,10 @@
 // floats at once. In Zig that's @Vector(4, f32): `+` on two vectors adds
 // lane by lane, and @reduce(.Add, v) adds up the lanes at the end.
 //
-// tinygrad calls this optimization UPCAST: it turns one loop dimension
-// into a small fixed-size one that becomes vector types (like float4) in
-// the rendered code.
+// tinygrad calls this UPCAST (or UNROLL, when the loop is a reduce like
+// this one): it splits a small fixed-size loop off one loop dimension,
+// and that small loop is fully unrolled in the rendered code, often into
+// vector types like float4.
 //
 // Zig note: `x[i..][0..4]` is a pointer to 4 elements starting at i, and
 // `.*` loads them. An array of 4 floats coerces to @Vector(4, f32).

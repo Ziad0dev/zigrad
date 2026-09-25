@@ -9,11 +9,12 @@
 // models, that bookkeeping can take longer than the kernels themselves!
 //
 // tinygrad's TinyJit fixes this. Decorate your step function with it:
-//   * the first calls run normally, and the JIT records which kernels ran,
-//     on which buffers ("capture")
-//   * every later call skips all the bookkeeping: copy the new inputs into
-//     the captured input buffers, then launch the recorded kernels in
-//     order ("replay")
+//   * the first call runs normally. The second runs normally too, while
+//     the JIT records which kernels ran, on which buffers ("capture")
+//   * every later call skips all the bookkeeping: put the new inputs where
+//     the captured ones were, then launch the recorded kernels in order
+//     ("replay"). Ours copies the new numbers into the old input buffer;
+//     tinygrad swaps in the new buffers themselves, which saves the copy.
 //
 // The catch: a replay is a recording. Anything your function decided
 // while capturing (the shapes, which branch of an `if` it took) is frozen

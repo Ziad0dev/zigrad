@@ -15,7 +15,8 @@
 //      each term = previous * (-r²) / ((2k)(2k + 1))
 //
 // (Huge x is a real problem: k * 2π rounds, and the reduced r can be
-// garbage. Serious libraries use extra-precise tricks for that. We stay
+// garbage. Serious libraries use extra-precise tricks for that: tinygrad's
+// xsin switches to the Payne-Hanek reduction for big inputs. We stay
 // with moderate inputs.)
 //
 // YOUR TASK: the two reductions and the series step.

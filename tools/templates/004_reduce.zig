@@ -12,8 +12,10 @@
 //     for sum it's 0, because x + 0 = x
 //     for max it's minus infinity, because max(x, -inf) = x for any x
 //
-// tinygrad has just two reduce primitives, SUM and MAX. mean is built
-// from sum.
+// tinygrad has just three reduce primitives: sum, product and max
+// (in its source, REDUCE with ADD, MUL or MAX). Everything else is built
+// from them: mean is a sum divided by the count, and min is the max of
+// the negated numbers, negated back.
 //
 // YOUR TASK: finish mean(). Then run `zig build` again: max() has a bug,
 // and one of the tests will catch it. Fix that too.

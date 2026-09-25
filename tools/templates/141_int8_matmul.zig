@@ -3,7 +3,7 @@
 //
 // Chapter 27: serving models cheaply. Quantization (049) stores weights as
 // int8, but you can also COMPUTE in integers: int8 multiply-adds are much
-// faster and cheaper than float ones, on CPUs and GPUs alike.
+// faster and cheaper than f32 ones, on CPUs and GPUs alike.
 //
 // Give each row of A its own scale sa[i], and each column of B its own
 // scale sb[j] ("per-channel" quantization: more accurate than one scale

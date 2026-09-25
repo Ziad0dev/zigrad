@@ -17,8 +17,8 @@
 //     compute: about one extra forward pass in total
 //
 // n/k + k is smallest at k = sqrt(n): 100 layers need about 20 stored
-// activations instead of 100. (tinygrad and PyTorch both offer this;
-// PyTorch calls it activation checkpointing, some call it rematerialization.)
+// activations instead of 100. (PyTorch offers this as
+// torch.utils.checkpoint. It's also called rematerialization.)
 //
 // YOUR TASK: write the memory formula and find the best k.
 //

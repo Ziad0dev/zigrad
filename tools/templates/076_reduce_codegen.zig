@@ -4,10 +4,11 @@
 // Chapter 15: code generation for real. In chapter 8 every kernel was one
 // flat loop. Real kernels are *loop nests*, built from two kinds of axes:
 //
-//   * global axes, one per output dimension (tinygrad names their loop
-//     variables gidx0, gidx1, ...; on a GPU they become thread indexes)
-//   * reduce axes, the dimensions being summed (ridx0, ridx1, ...), which
-//     become loops INSIDE each output element, with an accumulator
+//   * global axes, one per output dimension. On a GPU they become thread
+//     indexes, which tinygrad names gidx0, gidx1, ...
+//   * reduce axes, the dimensions being summed, which become loops INSIDE
+//     each output element, with an accumulator. tinygrad names them
+//     Ridx0, Ridx1, ...; we'll write ridx.
 //
 // Row sums of a [4, 3] tensor: one global axis (4 rows) and one reduce
 // axis (3 columns):
@@ -21,6 +22,9 @@
 //         out[gidx0] = acc;
 //       }
 //     }
+//
+// (Run tinygrad with DEV=CPU NOOPT=1 DEBUG=4 on x.sum(1) for a [4, 3] x,
+// and you'll see essentially this kernel, its CPU loop named Lidx1.)
 //
 // Each loop variable reads the input with its own stride (a view, 009).
 // Summing the COLUMNS instead just swaps the roles: gidx0 walks the 3

@@ -24,7 +24,8 @@
 // total, which is exactly the derivative of x^2.
 //
 // One backward pass gives the grad of EVERY input at once. That's why
-// every deep learning library, tinygrad included, uses reverse mode.
+// every deep learning library, tinygrad included, trains with reverse
+// mode.
 //
 // (Unlike tinygrad, this little engine computes each value immediately
 // when you build a node. It keeps the graph only for the backward pass.)

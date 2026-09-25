@@ -26,7 +26,8 @@
 //
 // Fun fact: that's valid C, and Zig ships a C compiler. Save the output
 // to kernel.c, and `zig cc -O2 -shared kernel.c -o kernel.so` builds it.
-// tinygrad's CPU backend does exactly that, with clang.
+// tinygrad's CPU backend does just that: by default it renders C and
+// compiles it with clang (it can also use LLVM directly).
 //
 // YOUR TASK: render the add, mul and max instructions.
 //

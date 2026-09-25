@@ -6,24 +6,24 @@ The best books, courses, videos, articles and papers to go with this course, gro
 
 ## tinygrad itself
 
-- [tinygrad on GitHub](https://github.com/tinygrad/tinygrad): the source. Everything in this course, for real. Start with `tinygrad/tensor.py`, then `tinygrad/uop/ops.py`.
+- [tinygrad on GitHub](https://github.com/tinygrad/tinygrad): the source. Everything in this course, for real. Start with `tinygrad/tensor.py` and the `tinygrad/mixin/` folder (most Tensor methods live there now), then `tinygrad/uop/ops.py`.
 - [tinygrad docs](https://docs.tinygrad.org/): user docs, plus a developer section with [an intro to the internals](https://docs.tinygrad.org/developer/developer/) and [UOps](https://docs.tinygrad.org/developer/uop/). [chapters 4, 8, 14, 15, 30]
-- [tinygrad-notes](https://mesozoic-egg.github.io/tinygrad-notes/): a long series of community write-ups walking through tinygrad's internals. [chapters 8, 14, 15, 30]
+- [tinygrad-notes](https://mesozoic-egg.github.io/tinygrad-notes/): a long series of community write-ups walking through tinygrad's internals. Many were written for older versions (with ShapeTracker), so check details against the current source. [chapters 8, 14, 15, 30]
 - [teenygrad](https://github.com/tinygrad/teenygrad): a sub-1000-line MNIST trainer sharing most of its code with (an older) tinygrad. A great next read after this course.
-- [george hotz archive](https://www.youtube.com/@geohotarchive/videos): recordings of George Hotz's live-coding streams, many of them building tinygrad. Try ["a tiny tour through tinygrad"](https://www.youtube.com/watch?v=-MhwhiReY-s).
+- [george hotz archive](https://www.youtube.com/@geohotarchive/videos): recordings of George Hotz's live-coding streams, many of them building tinygrad. Try ["tinygrad refactoring + new tour"](https://www.youtube.com/watch?v=nyDGXlLp578) (2025), or the original ["a tiny tour through tinygrad"](https://www.youtube.com/watch?v=-MhwhiReY-s) (2022, a much older tinygrad).
 - [micrograd](https://github.com/karpathy/micrograd): Karpathy's ~150-line scalar autograd engine, the idea behind exercises 030-031.
 
 ## Zig
 
 - [ziglang.org/learn](https://ziglang.org/learn/): the official docs and language reference.
 - [Ziglings](https://codeberg.org/ziglings/exercises): the course that inspired this one's format. Do it alongside if Zig itself is new to you.
-- [zig.guide](https://zig.guide): a friendly tutorial-style introduction.
+- [zig.guide](https://zig.guide): a friendly tutorial-style introduction. It tracks Zig's development version, so small details can differ from 0.16.
 
 ## Maths
 
 ### Linear algebra [chapters 2, 11]
 
-- [Essence of linear algebra (3Blue1Brown)](https://www.youtube.com/playlist?list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab): 16 short videos that make vectors, matrices, determinants and eigenvectors *visual*. The best starting point there is.
+- [Essence of linear algebra (3Blue1Brown)](https://www.youtube.com/playlist?list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab): short videos that make vectors, matrices, determinants and eigenvectors *visual*. The best starting point there is.
 - [MIT 18.06 Linear Algebra (Gilbert Strang)](https://ocw.mit.edu/courses/18-06-linear-algebra-spring-2010/): the classic university course, free video lectures.
 - [Mathematics for Machine Learning (Deisenroth, Faisal, Ong)](https://mml-book.github.io/): free book covering the linear algebra, calculus and probability behind ML.
 
@@ -83,7 +83,7 @@ The best books, courses, videos, articles and papers to go with this course, gro
 - [Making Deep Learning Go Brrrr From First Principles (Horace He)](https://horace.io/brrr_intro.html): compute-bound vs memory-bound vs overhead-bound. Chapter 9's roofline, in prose. [chapters 9, 20]
 - [How to Optimize a CUDA Matmul Kernel (Simon Boehm)](https://siboehm.com/articles/22/CUDA-MMM): a naive matmul optimized step by step to near cuBLAS speed. Coalescing, shared memory, tiling, register blocking. [chapters 9, 15, 29]
 - [GPU MODE lectures](https://github.com/gpu-mode/lectures): a community lecture series on GPU programming, from CUDA basics to Triton and FlashAttention.
-- [CUDA C++ Programming Guide (NVIDIA)](https://docs.nvidia.com/cuda/cuda-c-programming-guide/): the reference for GPU threads, blocks, shared memory and the memory model. [chapters 15, 20, 29]
+- [CUDA Programming Guide (NVIDIA)](https://docs.nvidia.com/cuda/cuda-programming-guide/index.html): the reference for GPU threads, blocks, shared memory and the memory model. It replaced the older CUDA C++ Programming Guide. [chapters 15, 20, 29]
 - *Programming Massively Parallel Processors* (Hwu, Kirk, El Hajj): the standard textbook on GPU programming.
 - [What Every Programmer Should Know About Memory (Drepper)](https://people.freebsd.org/~lstewart/articles/cpumemory.pdf): caches, from the hardware up. [chapter 29]
 - [Crafting Interpreters (Robert Nystrom)](https://craftinginterpreters.com/): a free, wonderful book on building languages. The best intro to how compilers think. [chapters 4, 8]

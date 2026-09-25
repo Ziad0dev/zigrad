@@ -4,8 +4,11 @@
 // ─── Exercise 079: OptOps, reshaping the loops ─────────────────────────
 //
 // A kernel's loop structure is just a list of axes: sizes plus kinds.
-// tinygrad optimizes a kernel by applying *OptOps*, each of which splits
-// one axis in two and gives the new piece a special job:
+// tinygrad optimizes a kernel by applying *OptOps*. The main one splits
+// one axis in two and gives the new, inner piece a special job. (Older
+// tinygrad had one OptOp per job, named like the ones below. Newer
+// tinygrad has a single SPLIT whose argument names the job, like
+// Opt(OptOps.SPLIT, axis, (16, AxisType.LOCAL)). Same idea.)
 //
 //   LOCAL(axis, n)    split a global axis; the n-sized piece becomes the
 //                     block/workgroup dimension (077). Threads in a block
@@ -24,8 +27,9 @@
 // UNROLL(2,4):
 //
 //     axes:  [1 global] [4 global] [16 reduce] [16 local] [16 local] [4 upcast] [4 unroll]
-//     4 blocks of 16*16 = 256 threads, each computing 4 outputs,
-//     with a reduce loop of 16 iterations doing 4 multiply-adds each.
+//     4 blocks of 16*16 = 256 threads, each computing 4 outputs, with a
+//     reduce loop of 16 iterations doing 4 * 4 = 16 multiply-adds each
+//     (4 outputs, times 4 unrolled steps of k).
 //
 // BEAM search (048) just tries lots of these OptOp lists and times them.
 //
@@ -111,6 +115,8 @@ test "optimizing a 64x64x64 matmul" {
     try std.testing.expectEqual(16, k.reduceIterations());
     // every output computed exactly once
     try std.testing.expectEqual(64 * 64, k.blocks() * k.threadsPerBlock() * k.outputsPerThread());
+    // and every multiply-add done exactly once: 16 per loop iteration
+    try std.testing.expectEqual(k.work(), k.blocks() * k.threadsPerBlock() * k.reduceIterations() * 16);
 }
 
 test "invalid OptOps are refused" {
