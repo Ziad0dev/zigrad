@@ -9,8 +9,9 @@
 // models, that bookkeeping can take longer than the kernels themselves!
 //
 // tinygrad's TinyJit fixes this. Decorate your step function with it:
-//   * the first call runs normally. The second runs normally too, while
-//     the JIT records which kernels ran, on which buffers ("capture")
+//   * the first call runs normally. On the second, the JIT records which
+//     kernels the function schedules, on which buffers, then runs that
+//     recording ("capture")
 //   * every later call skips all the bookkeeping: put the new inputs where
 //     the captured ones were, then launch the recorded kernels in order
 //     ("replay"). Ours copies the new numbers into the old input buffer;

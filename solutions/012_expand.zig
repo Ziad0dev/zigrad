@@ -9,8 +9,8 @@
 //     | 1 2 3 |  +  [10 20 30]  =  | 11 22 33 |
 //     | 4 5 6 |                    | 14 25 36 |
 //
-// Libraries do this in two steps (tinygrad's Tensor, like NumPy and
-// PyTorch, has a method for each):
+// Libraries do this in two steps (tinygrad and PyTorch call them reshape
+// and expand; NumPy has reshape and broadcast_to):
 //   1. reshape the bias to [1, 3]
 //   2. *expand* it to [2, 3]: stretch the size-1 dimension to 2
 //

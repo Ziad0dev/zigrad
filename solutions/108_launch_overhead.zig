@@ -15,10 +15,9 @@
 //
 // A *graph* is the whole list of kernels (with their arguments) recorded
 // once and submitted as a unit. CUDA calls them CUDA graphs. tinygrad's
-// JIT (051) captures the kernel list, and on the GPUs it drives itself
-// (the HCQ backends, 106) turns it into one prebuilt batch of commands,
-// enqueued in one go. (Older tinygrad called these "graph" runners, after
-// CUDA graphs.)
+// JIT (051) captures the kernel list, and its HCQ queue layer (106) turns
+// it into one prebuilt batch of commands, submitted in one go. (Older
+// tinygrad called these "graph" runners, after CUDA graphs.)
 //
 // YOUR TASK: write both times and the speedup.
 //

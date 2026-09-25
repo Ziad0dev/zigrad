@@ -20,9 +20,9 @@
 // -7 >> 1 = -4. For non-negative x they agree, and the range analysis of
 // 071 can often prove x >= 0 (loop variables start at 0). When it can't,
 // a fix-up works for any sign: (x + (x < 0 ? 2^k - 1 : 0)) >> k, which is
-// the rule tinygrad uses. Its rules go further, too: division by ANY
-// constant becomes a multiply and a shift (the "magic number" trick from
-// Hacker's Delight, chapter 10). Here we keep to the simple case.
+// the rule tinygrad uses. Its rules go further, too: for x >= 0, division
+// by ANY constant becomes a multiply and a shift (the "magic number" trick
+// from Hacker's Delight, chapter 10). Here we keep to the simple case.
 //
 // A number c is a power of two if c > 0 and c & (c - 1) == 0 (a single 1
 // bit), and k is then its count of trailing zeros (@ctz).

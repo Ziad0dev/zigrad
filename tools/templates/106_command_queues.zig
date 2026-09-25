@@ -11,8 +11,8 @@
 // value, and the GPU writes that value to the signal when it finishes
 // the command. "Wait until signal >= 5" means "wait until command 5 and
 // everything before it is done". (tinygrad's HCQ layer, "hardware command
-// queues", talks to AMD and NVIDIA GPUs at exactly this level, with no
-// vendor runtime in between.)
+// queues", is built on exactly this model. Its AMD and NV backends use it
+// to talk to the GPU directly, with no vendor runtime in between.)
 //
 // Queues can depend on each other: a GPU has separate copy and compute
 // engines, and the compute queue can be told "don't start this kernel
