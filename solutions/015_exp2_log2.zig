@@ -8,10 +8,12 @@
 // is built by combining them. A new chip only has to learn the
 // primitives, and it runs all of deep learning.
 //
-// Let's start with exponentials. Chips don't have e^x built in. They have
-// 2^x ("exp2") and log2, because floats are stored in base 2, so 2^x is
-// mostly "put x into the exponent bits". tinygrad's primitives are EXP2
-// and LOG2, and e^x and ln(x) are built from them by changing the base:
+// Let's start with exponentials. Chips don't have an e^x instruction.
+// GPUs have fast 2^x ("exp2") and log2 instructions instead, because
+// floats are stored in base 2, so 2^x is mostly "put x into the exponent
+// bits". (CPU math libraries compute them in software, with code like
+// exercise 147's.) tinygrad's primitives are EXP2 and LOG2, and e^x and
+// ln(x) are built from them by changing the base:
 //
 //     e^x   = 2^(x * log2(e))       because e = 2^log2(e)
 //     ln(x) = log2(x) * ln(2)       because x = 2^log2(x) = e^(log2(x) * ln 2)

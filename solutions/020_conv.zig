@@ -28,8 +28,11 @@
 // strides [2, 1]. The number of windows is (n - K) / stride + 1.
 //
 // tinygrad builds conv2d the same way: pad (014), cut the input into
-// windows with movement ops (its `_pool` helper), then mul + sum. A 2D
-// window view just has more dimensions: [out_h, out_w, kh, kw].
+// windows, then mul + sum. Its movement ops can't make overlapping strides
+// directly, so its `_pool` helper uses a neat trick: repeat the input K
+// times, then reshape that long row into rows one element longer than
+// the input, so each row starts one place further along. A 2D window
+// view just has more dimensions: [out_h, out_w, kh, kw].
 //
 // YOUR TASK: finish outLen() and conv1d().
 //

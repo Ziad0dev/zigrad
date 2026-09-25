@@ -14,8 +14,8 @@
 //                           16 bytes per parameter
 //
 // A 7-billion-parameter model needs 112 GB before a single activation,
-// more than any one GPU. Plain data parallelism (053) keeps ALL of it on
-// EVERY device.
+// more than most GPUs hold (an H100 has 80 GB). Plain data parallelism
+// (053) keeps ALL of it on EVERY device.
 //
 // *ZeRO* (the DeepSpeed paper; PyTorch's FSDP does the same) shards it
 // across N data-parallel devices instead:

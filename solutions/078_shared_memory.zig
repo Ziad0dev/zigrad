@@ -27,8 +27,8 @@
 // test shows the difference.
 //
 // A full sum is then two levels: each block writes a partial sum, and a
-// second (tiny) kernel adds those up. tinygrad's GROUP optimization
-// generates this kind of code.
+// second (tiny) kernel adds those up. tinygrad generates this kind of
+// code when it splits a reduce axis into LOCAL threads ("grouping", 047).
 //
 // YOUR TASK: write the tree step.
 //

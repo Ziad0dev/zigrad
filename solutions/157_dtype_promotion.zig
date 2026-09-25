@@ -18,9 +18,12 @@
 //     int64 -> float16, bfloat16   uint64 -> float16, bfloat16
 //     float16 -> float32           bfloat16 -> float32     float32 -> float64
 //
-// (The lattice here is modeled on tinygrad's. Note int64 -> float16:
-// every int "fits" a float in range, if not in precision. That's the
-// usual convention: mixing ints and floats gives a float.)
+// (The lattice here is a simplified version of tinygrad's promo_lattice.
+// The real one also has fp8 types, and "weak" types for plain Python
+// numbers that sit between int64 and float16. So in tinygrad, int64 +
+// uint64 gives a weak float, where ours gives float16. Note int64 ->
+// float16: every int "fits" a float in range, if not in precision.
+// That's the usual convention: mixing ints and floats gives a float.)
 //
 // YOUR TASK: collect every type reachable from a type, and pick the
 // least upper bound.

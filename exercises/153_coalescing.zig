@@ -2,15 +2,17 @@
 // ─── Exercise 153: coalesced memory access ─────────────────────────────
 //
 // On a GPU, the 32 threads of a *warp* execute each load instruction
-// together. The memory system serves them in 128-byte *segments*. If all
-// 32 threads read neighbouring floats (thread t reads address base + 4t),
-// that's 128 contiguous bytes: ONE transaction for the whole warp. The
-// access is *coalesced*.
+// together. The memory system serves them in aligned 128-byte *segments*
+// (cache lines). If all 32 threads read neighbouring floats (thread t
+// reads address base + 4t), that's 128 contiguous bytes: ONE transaction
+// for the whole warp. The access is *coalesced*.
 //
 // If thread t reads base + 4 * t * stride instead, the reads spread out:
 // stride 2 needs 2 segments, stride 32 needs 32 (a full transaction per
 // thread, fetching 128 bytes to use 4). Same instruction, up to 32x the
-// memory traffic.
+// memory traffic. (That's the classic model. Modern NVIDIA GPUs can fetch
+// each 32-byte quarter of a line, a *sector*, on its own, so the worst
+// case wastes 8x rather than 32x. The lesson is the same.)
 //
 // This is why tinygrad (and every GPU compiler) cares which loop variable
 // becomes the thread index: the one that walks memory with stride 1

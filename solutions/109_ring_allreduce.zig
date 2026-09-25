@@ -22,7 +22,8 @@
 //
 // Each device sends 2(N - 1) chunks of size V/N: about 2V bytes in total,
 // NO MATTER HOW MANY devices. That's why it scales, and it's what NCCL
-// (and multi-GPU tinygrad) use.
+// uses. So does multi-GPU tinygrad, for big tensors on 3 or more devices
+// (for small ones, the extra steps cost more than they save).
 //
 // YOUR TASK: finish both phases.
 //

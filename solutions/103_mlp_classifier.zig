@@ -10,9 +10,10 @@
 //       def __init__(self): self.l1, self.l2 = nn.Linear(64, 32), nn.Linear(32, 10)
 //       def __call__(self, x): return self.l2(self.l1(x).relu())
 //
-//     for x, y in batches:
-//       loss = model(x).sparse_categorical_crossentropy(y)
-//       opt.zero_grad(); loss.backward(); opt.step()
+//     with Context(TRAINING=1):
+//       for x, y in batches:
+//         loss = model(x).sparse_categorical_crossentropy(y)
+//         opt.zero_grad(); loss.backward(); opt.step()
 //
 // Every piece of that is something you've built: Linear (082), relu
 // (003), cross-entropy (036), backward (068), zero_grad (039), SGD (032),
