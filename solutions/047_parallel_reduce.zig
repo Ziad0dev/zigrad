@@ -13,8 +13,9 @@
 //
 // n numbers take only log2(n) steps if you have enough workers. That's how
 // a GPU reduces: each thread sums a piece, then the partial sums are
-// combined in halves (tinygrad's GROUP optimizations split a reduce like
-// this across the threads of a workgroup).
+// combined in halves. (tinygrad calls splitting a reduce across the
+// threads of a workgroup "grouping": part of the reduce loop becomes
+// LOCAL threads that combine their sums through shared memory, 078.)
 //
 // A bonus: the tree is also more ACCURATE. Adding 0.1 a million times in
 // order, the running total gets big and swallows the small 0.1s (002).

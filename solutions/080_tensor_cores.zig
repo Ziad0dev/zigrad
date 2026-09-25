@@ -10,8 +10,8 @@
 //     C_tile += A_tile · B_tile       (e.g. 16x16x16: 4096 multiply-adds)
 //
 // with low-precision inputs (f16 or bf16, 049) and an f32 accumulator.
-// They're where most of a GPU's advertised FLOPs come from, often 10x
-// more than the regular cores.
+// They're where most of a GPU's advertised FLOPs come from: on
+// datacenter GPUs, often 10x or more what the regular cores can do.
 //
 // Using them is tiling (046) again, with the inner tile product replaced
 // by the special instruction ("mma", matrix multiply-accumulate):

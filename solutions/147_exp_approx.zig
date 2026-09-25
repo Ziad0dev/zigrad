@@ -5,8 +5,11 @@
 //
 // We've used @exp2 as a primitive since 015. But on some chips, or in
 // some backends, there's no such instruction, and the kernel must
-// compute it from + and *. tinygrad has exactly this code (in its
-// "transcendental" functions) for backends that lack them.
+// compute it from + and *. tinygrad has exactly this code for backends
+// that lack them: xexp2, in tinygrad/codegen/decomp/transcendental.py
+// (ported from the SLEEF math library). It does steps 1 to 3 below, with
+// a polynomial whose coefficients are tuned to minimize the worst-case
+// error, instead of the Taylor series we use.
 //
 // The standard recipe, *range reduction* then a *polynomial*:
 //

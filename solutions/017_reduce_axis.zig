@@ -11,9 +11,11 @@
 //                  sum along axis 1 (across the rows)   -> |  6 |
 //                                                          | 15 |
 //
-// tinygrad's reduce ops keep the reduced axis with size 1 ("keepdim"):
-// [2, 3] summed along axis 0 becomes [1, 3], not [3]. A later reshape can
-// drop the 1 if you want. Keeping it makes broadcasting back easy.
+// Here we keep the reduced axis with size 1 ("keepdim"): [2, 3] summed
+// along axis 0 becomes [1, 3], not [3]. A later reshape can drop the 1 if
+// you want. Keeping it makes broadcasting back easy, which is why
+// tinygrad's and PyTorch's sum and max take keepdim=True (NumPy spells
+// it keepdims=True).
 //
 // The plan: for each output element (whose index along `axis` is 0),
 // walk k = 0, 1, 2, ... along `axis` and add up input[..., k, ...].

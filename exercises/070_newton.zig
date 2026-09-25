@@ -21,8 +21,8 @@
 // f'' tells you how curved the bowl is, so the step size picks itself.
 // On a quadratic bowl, Newton lands in ONE step. The catch in deep
 // learning: with n weights, f'' is an n x n matrix (the Hessian, 058),
-// far too big to build and invert. So we use approximations, like Adam's
-// per-weight scaling (038).
+// far too big to build and invert. So deep learning uses cheaper tricks
+// that play a similar role, like Adam's per-weight step sizes (038).
 //
 // Everything here uses the graph engine from 069, finished.
 //

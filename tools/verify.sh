@@ -13,4 +13,6 @@ check() {
   echo "ok   $f"
 }
 export -f check
-ls exercises | grep "^${1:-}" | xargs -P 8 -I{} bash -c 'check {}' | sort -k2
+out=$(ls exercises | grep "^${1:-}" | xargs -P 8 -I{} bash -c 'check {}' | sort -k2)
+echo "$out"
+! grep -q "^BAD" <<< "$out"

@@ -22,8 +22,10 @@
 // then add the new block's terms. At the end, out = acc / l. Exact, not
 // an approximation: same answer as the normal way, in far less memory.
 // Combined with tiling (046) it's why modern transformers are fast.
-// In tinygrad, getting kernels like this is a job for the scheduler and
-// its fusion rules.
+// In tinygrad, getting kernels like this is mostly a job for the
+// scheduler and its fusion rules. Its LLM code (tinygrad/llm) also ships
+// hand-written flash attention kernels for some AMD GPUs, written
+// directly as UOps.
 //
 // YOUR TASK: write the correction, the rescale, the accumulate and the
 // final divide.

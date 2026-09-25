@@ -18,8 +18,9 @@
 //     f'(x) ≈ (f(x + h) - f(x - h)) / (2h)
 //
 // Its error shrinks like h^2 instead of like h, because the leftover
-// error terms of the two sides cancel. With h = 0.001: an error of about
-// 0.000001 instead of 0.001.
+// error terms of the two sides cancel. With h = 0.001: an error around
+// 0.000001 instead of around 0.001. (For x^2 it's exactly 0, rounding
+// aside: those leftover terms are all zero for a parabola.)
 //
 // But h can't be TOO small. Remember exercise 002: x + h rounds, and you
 // end up dividing a rounding error by a tiny number.

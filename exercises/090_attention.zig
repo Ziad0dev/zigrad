@@ -1,7 +1,7 @@
 //
 // ─── Exercise 090: attention ───────────────────────────────────────────
 //
-// Chapter 17: the transformer, the architecture behind every large
+// Chapter 17: the transformer, the architecture behind nearly every large
 // language model. Its core is *attention*: each token looks at the other
 // tokens and pulls in information from the relevant ones.
 //

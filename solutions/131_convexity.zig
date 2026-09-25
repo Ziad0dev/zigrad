@@ -17,8 +17,9 @@
 // global best.
 //
 // Not convex: almost every neural network loss. Even y = w1 * w2 * x has
-// two separate best answers (w1, w2) and (-w1, -w2), and the path between
-// them goes UP. That's why deep learning results depend on initialization
+// two separate valleys of best answers, one with both weights positive
+// and a mirror image with both negative, and the path between them goes
+// UP. That's why deep learning results depend on initialization
 // (037) and randomness, and why it's remarkable they work so well anyway.
 //
 // YOUR TASK: write the midpoint test, and check f'' numerically.

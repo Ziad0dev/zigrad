@@ -1,7 +1,7 @@
 // Reference solution. Try the exercise in exercises/ first:
 // struggling a bit is how this stuff sticks.
 //
-// ─── Exercise 160: the final capstone ──────────────────────────────────
+// ─── Exercise 160: the tinygrad capstone ───────────────────────────────
 //
 // Everything, together. Below is a complete, working mini tinygrad in one
 // file: lazy tensors built from 7 primitive ops (chapters 3-4), kernel
@@ -20,7 +20,8 @@
 // Then run it for real:  zig run exercises/160_mini_tinygrad.zig
 // It prints the kernels it generates and learns y = 2x + 1.
 //
-// Congratulations on making it here. Go read tinygrad.
+// Congratulations: that's all of tinygrad, rebuilt. Part IV (161-180)
+// goes down to the hardware and out to today's models.
 //
 const std = @import("std");
 
@@ -152,7 +153,7 @@ pub const Tensor = struct {
 
     // ─── 4. Realize: turning the lazy graph into actual work ────────────
     //
-    // Kernel rule, same idea as tinygrad's scheduler:
+    // Kernel rule, a simpler version of tinygrad's scheduler (040):
     //   * a chain of elementwise ops (add, mul, max, expand, constant)
     //     is FUSED into one loop, with no temporary arrays in between;
     //   * a reduce (sum) needs every input before it can finish, so it

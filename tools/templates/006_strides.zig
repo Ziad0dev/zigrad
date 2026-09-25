@@ -19,9 +19,9 @@
 //     shape   [4, 2, 3]
 //     strides [6, 3, 1]        3 = 1 * 3,   6 = 3 * 2
 //
-// Strides are THE big idea of this chapter. Almost every "movement" op in
-// tinygrad (transpose, broadcast, slice, flip) works by changing strides
-// instead of moving any data.
+// Strides are THE big idea of this chapter. Almost every "movement" op
+// (transpose, broadcast, slice, flip) can be done by changing strides
+// instead of moving any data, and tinygrad's movement ops never copy.
 //
 // Zig note: `for` only counts upwards, so to walk the dimensions from
 // last to first we use `while` and count down by hand.

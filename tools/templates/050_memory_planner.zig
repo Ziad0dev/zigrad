@@ -15,9 +15,11 @@
 //     step 2:  t2 = h(t1)          t2 -> slot A!    t1 is done: B is free
 //     step 3:  out = k(t2)         out -> slot B!
 //
-// Four buffers, two slots of real memory. tinygrad does this in its
-// memory planner, and also keeps freed GPU buffers in a cache (grouped
-// by size), so it doesn't have to ask the driver for memory every time.
+// Four buffers, two slots of real memory. tinygrad's memory planner does
+// this more flexibly: it packs every temporary buffer at some offset
+// inside one big block, so buffers of different sizes can share memory
+// too. It also keeps freed GPU buffers in a cache (grouped by size), so
+// it doesn't have to ask the driver for memory every time.
 //
 // One rule: a step's output gets its slot BEFORE the step's inputs are
 // freed, because a kernel can't write over something it's still reading.

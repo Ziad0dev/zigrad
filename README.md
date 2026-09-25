@@ -2,7 +2,7 @@
 
 A zero-to-hero course on [tinygrad](https://github.com/tinygrad/tinygrad), on deep learning, and on the maths underneath both, taught by rebuilding it all in Zig one small broken program at a time. The format follows [ziglings](https://codeberg.org/ziglings/exercises).
 
-There are 160 exercises in three parts. Each one teaches a single idea in its comments, then leaves you a hole or a bug to fix. Fix it and the tests at the bottom pass. You don't need any maths beyond school algebra, or any prior Zig: both are introduced as they come up.
+There are 180 exercises in four parts. Each one teaches a single idea in its comments, then leaves you a hole or a bug to fix. Fix it and the tests at the bottom pass. You don't need any maths beyond school algebra, or any prior Zig: both are introduced as they come up.
 
 ## Getting started
 
@@ -31,13 +31,14 @@ exercises/002_floats.zig:27:15: error: expected type expression, found ';'
 Hint: For approxEq, how far apart are a and b? ...
 ```
 
-Fix the file, run `zig build` again, and repeat.
+Fix the file, run `zig build` again, and repeat. Exercises that already pass are remembered, so reruns are instant: only new or edited files get checked again.
 
 | Command | What it does |
 |---|---|
 | `zig build` | Check all exercises in order |
 | `zig build -Dn=17` | Check only exercise 17 |
 | `zig build -Dsolutions` | Check the reference solutions |
+| `zig build -Dfresh` | Recheck everything, ignoring remembered passes |
 | `zig test exercises/017_reduce_axis.zig` | Run one file's tests directly |
 
 Stuck? Every exercise has a finished version in `solutions/`. Try for a while first, though: the struggle is where the learning happens.
@@ -87,6 +88,15 @@ Stuck? Every exercise has a finished version in `solutions/`. Try for a while fi
 | 29. The memory hierarchy | 151–155 | caches; loop order; coalescing; bank conflicts; register blocking |
 | 30. tinygrad internals | 156–160 | UPat pattern matching; dtype promotion; strength reduction; in-place safety; a final mini-tinygrad capstone |
 
+## Part IV: performance engineering and modern models
+
+| Chapter | Exercises | You learn |
+|---|---|---|
+| 31. The CPU, for real | 161–165 | a SIMD matmul microkernel with FMA; splitting work over threads; false sharing; Amdahl's and Gustafson's laws; Little's law and latency hiding |
+| 32. How GPUs execute | 166–170 | occupancy; warp divergence; warp shuffles; parallel prefix sums; Triton-style block programming with masks |
+| 33. Inside modern LLMs | 171–175 | RMSNorm; SwiGLU; grouped-query attention; nucleus (top-p) sampling; mixture-of-experts routing |
+| 34. Measure, don't guess | 176–180 | honest benchmarking; 6ND and MFU; Chinchilla scaling laws; the speed limit of decoding; a LLaMA-style transformer block, checked against its KV-cache version |
+
 Want the whole picture before you start? `examples/tinygrad_in_one_file.zig` puts Part I's core together in about 500 lines:
 
 ```sh
@@ -99,7 +109,7 @@ See [RESOURCES.md](RESOURCES.md) for the best books, courses, videos, articles a
 
 ## Afterwards
 
-Read tinygrad's own source. The names you'll meet there (`UOp`, `graph_rewrite`, `PatternMatcher`, views, the scheduler, renderers, OptOps, `BEAM`, `TinyJit`, HCQ) are all things you've built. tinygrad changes quickly, so details will differ, but the ideas are the ones in this course.
+Read tinygrad's own source. The names you'll meet there (`UOp`, `graph_rewrite`, `PatternMatcher`, `UPat`, movement ops, the scheduler, renderers, OptOps, `BEAM`, `TinyJit`, HCQ) are all things you've built. tinygrad changes quickly, so details will differ, but the ideas are the ones in this course. Every tinygrad fact in the exercises was checked against its source as of September 2026.
 
 ## Maintaining the exercises
 
@@ -109,6 +119,9 @@ Read tinygrad's own source. The names you'll meet there (`UOp`, `graph_rewrite`,
 python3 tools/gen.py      # regenerate exercises/ and solutions/
 tools/verify.sh           # every exercise fails, every solution passes and is zig fmt clean
 tools/verify.sh 07        # just exercises 070-079
+python3 tools/check_holes.py   # every compile error points at a ??? hole
 ```
+
+GitHub Actions runs all of these on every push (`.github/workflows/check.yml`).
 
 New exercises also need an entry, with a hint, in `build.zig`.

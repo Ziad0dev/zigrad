@@ -8,7 +8,7 @@
 // Backtracking with the *Armijo condition*: start with t = 1 and halve t
 // until
 //
-//     f(x - t g) <= f(x) - c t |g|²          (c small, like 0.5)
+//     f(x - t g) <= f(x) - c t |g|²          (c in (0, 1); we use 0.5)
 //
 // i.e. the loss dropped by at least a fraction c of what the slope
 // promised. Too big a step overshoots and fails the test, and gets halved.
@@ -16,7 +16,8 @@
 // Deep learning rarely uses line search: evaluating the loss on a whole
 // dataset twice per step is too expensive, and with mini-batches (102)
 // the loss is noisy anyway. But it's why classic optimizers "just work",
-// and it's used inside L-BFGS, a popular optimizer for small problems.
+// and it's used inside L-BFGS, a popular optimizer for problems where
+// the full loss is cheap to compute.
 //
 // YOUR TASK: write the backtracking loop.
 //

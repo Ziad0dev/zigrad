@@ -16,8 +16,8 @@
 // (1 + small) numbers, and stays healthy.
 //
 // ResNets (2015) made 100+ layer CNNs trainable this way, and every
-// transformer block is two residual connections: x + attention(norm(x)),
-// then x + mlp(norm(x)).
+// transformer block is two residual connections. In the "pre-norm" form
+// most modern models use: x + attention(norm(x)), then x + mlp(norm(x)).
 //
 // YOUR TASK: compute the gradient through a deep stack, both ways.
 //

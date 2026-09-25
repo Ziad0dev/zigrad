@@ -16,8 +16,9 @@
 //
 // -shared builds a library instead of a program, -fPIC lets it be loaded
 // at any address, and -nostdlib skips the C standard library (our kernel
-// only does arithmetic). That's why render() below writes max as
-// `a > b ? a : b` instead of fmaxf from math.h.
+// only does arithmetic; tinygrad's CPU backend passes -nostdlib too).
+// That's why render() below writes max as `a > b ? a : b` instead of
+// fmaxf from math.h.
 //
 // The loaded function has the C calling convention, so its Zig type is
 //     *const fn (...) callconv(.c) void

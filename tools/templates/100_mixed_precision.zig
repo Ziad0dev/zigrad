@@ -3,8 +3,8 @@
 //
 // Training in f16 is about twice as fast as f32 (044, 049, 080). But f16
 // has a tiny range: nothing below about 6e-8 survives (it rounds to 0),
-// and nothing above 65504 (it becomes inf). Gradients are often
-// around 1e-8, and they would silently vanish.
+// and nothing above 65504 (it becomes inf). Tiny gradients are common,
+// and in f16 the smallest of them would silently vanish.
 //
 // The standard recipe ("mixed precision"):
 //   1. keep a master copy of the weights in f32

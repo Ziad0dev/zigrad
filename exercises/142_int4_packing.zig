@@ -3,7 +3,8 @@
 //
 // Go further: 4 bits per weight, 16 possible values (-8 to 7). A 70B
 // model shrinks from 140 GB (f16) to about 35 GB. That's how big LLMs run
-// on a single consumer GPU.
+// on consumer hardware: two 24 GB gaming GPUs, or a Mac with enough
+// unified memory.
 //
 // Memory is addressed in bytes, so two 4-bit values ("nibbles") share one
 // byte: the first in the low 4 bits, the second in the high 4 bits.

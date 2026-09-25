@@ -15,7 +15,7 @@
 // the same factor keeps the DIRECTION of the step and only shortens it.
 // Clipping each number separately would change the direction.
 //
-// Almost every LLM training run clips to a max norm of about 1.0.
+// Most LLM training runs clip to a max norm of 1.0 (GPT-3 and LLaMA did).
 //
 // YOUR TASK: write globalNorm() and clip().
 //

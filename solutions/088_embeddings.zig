@@ -22,6 +22,8 @@
 // And the one-hot matrix comes from a comparison with a broadcast arange:
 // (arange(vocab) == ids[:, None]). All primitives: nothing new needed,
 // and autograd gives the scatter-add for free as matmul's backward (035).
+// (tinygrad's nn.Embedding builds exactly this comparison, then picks the
+// rows with a where and a sum: the same maths as the matmul.)
 //
 // YOUR TASK: finish lookup, its backward, and the one-hot matrix.
 //

@@ -25,6 +25,11 @@
 // Without fusion, every op is its own kernel, and a * b gets written to
 // memory in full, only to be read straight back by the sum.
 //
+// (Real tinygrad is smarter than this rule: ops that only use a reduce's
+// final result can join the reduce's kernel, so this example is ONE
+// kernel there. But softmax, whose every element needs the max and then
+// the sum, still takes three kernels. The simple rule is where it starts.)
+//
 // YOUR TASK: finish isKernel() and collectInputs(). The tests count
 // kernels and bytes moved, fused vs. unfused.
 //

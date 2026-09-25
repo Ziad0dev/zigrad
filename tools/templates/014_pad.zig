@@ -7,9 +7,11 @@
 //
 // Convolutions (exercise 020) pad all the time. Allocating a bigger
 // buffer and copying just to add zeros would be a waste, so tinygrad
-// gives the view a *mask*: a valid range for each dimension. Inside that
-// range we read memory as usual. Outside it the answer is simply 0, and
-// memory is never touched.
+// never stores the zeros. The view gets a *mask* instead: a valid range
+// for each dimension. Inside that range we read memory as usual. Outside
+// it the answer is simply 0, and memory is never touched. (Older tinygrad
+// kept the mask in its View objects. Newer versions put the same range
+// check into the index maths, as a condition: exercise 073.)
 //
 //     memory:              [ 1 2 3 ]
 //     padded view:     [ 0 1 2 3 0 0 ]     shape 6, valid range [1, 4)

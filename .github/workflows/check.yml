@@ -1,0 +1,26 @@
+name: check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  exercises:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+      - name: Every exercise fails, every solution passes and is zig fmt clean
+        run: tools/verify.sh
+      - name: Generated files are up to date
+        run: git diff --exit-code exercises solutions
+      - name: Every error points at a ??? hole
+        run: python3 tools/check_holes.py
+      - name: The build runner passes on the solutions
+        run: zig build -Dsolutions
+      - name: The one-file example
+        run: zig test examples/tinygrad_in_one_file.zig
+      - name: Formatting
+        run: zig fmt --check build.zig examples
