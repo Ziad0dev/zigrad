@@ -1,0 +1,123 @@
+// Simplification rules (exercise 072).
+fn constOf(n: *const Node) ?i64 {
+    return if (n.op == .constant) n.value else null;
+}
+
+/// If n is x * d, returns x.
+fn timesConst(n: *const Node, d: i64) ?*const Node {
+    if (n.op == .mul and constOf(n.src[1]) == d) return n.src[0];
+    return null;
+}
+
+const Rule = *const fn (g: *Graph, n: *const Node) ?*const Node;
+
+/// Do the arithmetic when every source is a constant.
+fn fold(g: *Graph, n: *const Node) ?*const Node {
+    if (n.src.len != 2) return null;
+    const a = constOf(n.src[0]) orelse return null;
+    const b = constOf(n.src[1]) orelse return null;
+    return g.c(switch (n.op) {
+        .add => a + b,
+        .mul => a * b,
+        .idiv => @divFloor(a, b),
+        .mod => @mod(a, b),
+        else => unreachable,
+    });
+}
+
+/// x + 0, x * 1, x * 0, x // 1, x % 1
+fn identities(g: *Graph, n: *const Node) ?*const Node {
+    if (n.src.len != 2) return null;
+    const a = n.src[0];
+    const b = n.src[1];
+    switch (n.op) {
+        .add => {
+            if (constOf(b) == 0) return a;
+            if (constOf(a) == 0) return b;
+        },
+        .mul => {
+            if (constOf(b) == 1) return a;
+            if (constOf(a) == 1) return b;
+            if (constOf(a) == 0 or constOf(b) == 0) return g.c(0);
+        },
+        .idiv => if (constOf(b) == 1) return a,
+        .mod => if (constOf(b) == 1) return g.c(0),
+        else => {},
+    }
+    return null;
+}
+
+/// x % d -> x, when x is already in [0, d)
+fn modInRange(g: *Graph, n: *const Node) ?*const Node {
+    _ = g;
+    if (n.op != .mod) return null;
+    const d = constOf(n.src[1]) orelse return null;
+    const b = bounds(n.src[0]);
+    if (b[0] >= 0 and b[1] < d) return n.src[0];
+    return null;
+}
+
+/// x // d -> 0, when x is in [0, d)
+fn divInRange(g: *Graph, n: *const Node) ?*const Node {
+    if (n.op != .idiv) return null;
+    const d = constOf(n.src[1]) orelse return null;
+    const b = bounds(n.src[0]);
+    if (b[0] >= 0 and b[1] < d) return g.c(0);
+    return null;
+}
+
+/// (x * d) // d -> x,   (x * d + y) // d -> x + y // d
+fn divOfMulAdd(g: *Graph, n: *const Node) ?*const Node {
+    if (n.op != .idiv) return null;
+    const d = constOf(n.src[1]) orelse return null;
+    const a = n.src[0];
+    if (timesConst(a, d)) |x| return x;
+    if (a.op != .add) return null;
+    if (timesConst(a.src[0], d)) |x| return g.add(x, g.idiv(a.src[1], n.src[1]));
+    if (timesConst(a.src[1], d)) |x| return g.add(x, g.idiv(a.src[0], n.src[1]));
+    return null;
+}
+
+/// (x * d) % d -> 0,   (x * d + y) % d -> y % d
+fn modOfMulAdd(g: *Graph, n: *const Node) ?*const Node {
+    if (n.op != .mod) return null;
+    const d = constOf(n.src[1]) orelse return null;
+    const a = n.src[0];
+    if (timesConst(a, d) != null) return g.c(0);
+    if (a.op != .add) return null;
+    if (timesConst(a.src[0], d) != null) return g.mod(a.src[1], n.src[1]);
+    if (timesConst(a.src[1], d) != null) return g.mod(a.src[0], n.src[1]);
+    return null;
+}
+
+/// (x // d) * d + x % d -> x   (in either order)
+fn recombine(g: *Graph, n: *const Node) ?*const Node {
+    _ = g;
+    if (n.op != .add) return null;
+    for ([_][2]*const Node{ .{ n.src[0], n.src[1] }, .{ n.src[1], n.src[0] } }) |pair| {
+        const div_part = pair[0]; // (x // d) * d ?
+        const mod_part = pair[1]; // x % d ?
+        if (mod_part.op != .mod) continue;
+        const x = mod_part.src[0];
+        const d = constOf(mod_part.src[1]) orelse continue;
+        const q = timesConst(div_part, d) orelse continue; // q should be x // d
+        if (q.op == .idiv and q.src[0] == x and constOf(q.src[1]) == d) return x;
+    }
+    return null;
+}
+
+const rules = [_]Rule{ &fold, &identities, &modInRange, &divInRange, &divOfMulAdd, &modOfMulAdd, &recombine };
+
+fn simplify(g: *Graph, n: *const Node) *const Node {
+    var cur = n;
+    if (n.src.len == 2) cur = g.new(n.op, &.{ simplify(g, n.src[0]), simplify(g, n.src[1]) }, 0);
+    search: while (true) {
+        for (rules) |rule| {
+            if (rule(g, cur)) |next| {
+                cur = simplify(g, next);
+                continue :search;
+            }
+        }
+        return cur;
+    }
+}

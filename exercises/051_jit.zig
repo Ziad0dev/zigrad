@@ -77,7 +77,7 @@ const Jit = struct {
         if (j.captured) |launches| {
             // replay: same shapes only, then new inputs + recorded kernels
             if (x.len != rt.bufs[x_buf].len) return error.ShapeChanged;
-            ???
+            ???;
         } else {
             // capture: do everything the slow way, and remember the kernels
             @memcpy(rt.bufs[x_buf], x);

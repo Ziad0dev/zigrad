@@ -186,11 +186,11 @@ fn train(weights_alloc: std.mem.Allocator, seed: u64, steps: usize, lr: f64, net
         last_loss = loss.value;
 
         // 3. backward
-        ???
+        ???;
 
         // 4. step
         for (&params) |p| {
-            ???
+            ???;
         }
     }
     return last_loss;

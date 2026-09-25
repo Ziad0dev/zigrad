@@ -145,7 +145,7 @@ fn maxAxis(v: View, data: []const f32, axis: usize, out: []f32) View {
         unravel(flat, out_view.shape[0..v.ndim], idx[0..v.ndim]);
         // Same as sumAxis, but starting from max's identity (exercise 004).
         var acc: f32 = ???;
-        ???
+        ???;
         o.* = acc;
     }
     return out_view;
