@@ -43,6 +43,20 @@ Fix the file, run `zig build` again, and repeat. Exercises that already pass are
 
 Stuck? Every exercise has a finished version in `solutions/`. Try for a while first, though: the struggle is where the learning happens.
 
+## Learning paths
+
+180 exercises is a lot. You don't have to do them in one straight line:
+
+| If you want to... | Do |
+|---|---|
+| understand how tinygrad works, fast | Part I (001–053), then chapter 30 (156–160) |
+| learn the maths of deep learning | chapters 1–7 (001–039), then 11–13 (054–070) and 16–18 (082–101) |
+| write fast kernels | chapters 1–4 and 8–10 (001–025, 040–053), then 14–15 (071–081), 28–29 (146–155) and 31–32 (161–170) |
+| understand modern LLMs | chapters 1–7 (001–039), 16–17 (082–095), 22 (116–120), 27 (141–145) and 33–34 (171–180) |
+| everything | 001 to 180 in order: each part builds on the ones before |
+
+Later exercises point back to the earlier ones they use (for example "softmax (018)"), so if you skip ahead and meet something unfamiliar, the number tells you where it's taught. `zig build -Dn=N` checks a single exercise.
+
 ## Part I: build tinygrad in miniature
 
 | Chapter | Exercises | You learn |
