@@ -93,12 +93,12 @@ fn addZero(g: *Graph, n: *const Node) ?*const Node {
 /// x * 1 -> x, and 1 * x -> x
 fn mulOne(g: *Graph, n: *const Node) ?*const Node {
     _ = g;
-    ???
+    ???;
 }
 
 /// x * 0 -> 0, and 0 * x -> 0
 fn mulZero(g: *Graph, n: *const Node) ?*const Node {
-    ???
+    ???;
 }
 
 /// Constant folding: when both sources are constants, do the maths now.

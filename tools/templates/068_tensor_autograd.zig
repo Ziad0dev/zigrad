@@ -53,7 +53,7 @@ fn passGrad(t: *Tensor) void {
         .relu => {
             const x = t.a.?;
             for (x.grad, x.data, t.grad) |*g, v, dg| {
-                ⟪if (v > 0) g.* += dg;|||???⟫
+                ⟪if (v > 0) g.* += dg;|||???;⟫
             }
         },
         .sum => {

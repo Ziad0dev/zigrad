@@ -36,7 +36,7 @@ const Bigram = struct {
         var prev: usize = 0; // every name starts after a '.'
         for (text) |ch| {
             const next = id(ch);
-            ⟪m.counts[prev][next] += 1;|||???⟫
+            ⟪m.counts[prev][next] += 1;|||???;⟫
             prev = next;
         }
         return m;

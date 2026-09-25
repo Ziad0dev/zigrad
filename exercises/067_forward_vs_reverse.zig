@@ -52,8 +52,8 @@ fn jvp(u: []const f64, out: []f64) void {
     var a: [4]f64 = undefined;
     var b: [2]f64 = undefined;
     matVec(&j1, 4, 3, u, &a);
-    ???
-    ???
+    ???;
+    ???;
 }
 
 /// vᵀ J, through the chain backwards: ((vᵀ J3) J2) J1.
@@ -61,8 +61,8 @@ fn vjp(v: []const f64, out: []f64) void {
     var a: [2]f64 = undefined;
     var b: [4]f64 = undefined;
     vecMat(v, &j3, 1, 2, &a);
-    ???
-    ???
+    ???;
+    ???;
 }
 
 const Mode = enum { forward, reverse };

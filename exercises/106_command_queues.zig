@@ -41,7 +41,7 @@ const Queue = struct {
 
     /// CPU side: queue a command, get back the signal value that marks it done.
     fn submit(q: *Queue, cmd: Command) u64 {
-        ???
+        ???;
         var c = cmd;
         c.value = ???;
         q.commands[q.submitted] = c;

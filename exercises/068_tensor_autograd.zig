@@ -160,7 +160,7 @@ fn passGrad(t: *Tensor) void {
         .relu => {
             const x = t.a.?;
             for (x.grad, x.data, t.grad) |*g, v, dg| {
-                ???
+                ???;
             }
         },
         .sum => {

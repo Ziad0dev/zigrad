@@ -57,7 +57,7 @@ fn flashRow(q: []const f64, k: []const f64, v: []const f64, t: usize, d: usize, 
         for (acc[0..dv]) |*a| ⟪a.* *= correction|||???⟫;
         for (start..end) |j| {
             const p = @exp(s[j - start] - m_new);
-            ⟪l += p;|||???⟫
+            ⟪l += p;|||???;⟫
             for (0..dv) |c| acc[c] += ⟪p * v[j * dv + c]|||???⟫;
         }
         m = m_new;

@@ -46,7 +46,7 @@ const Cache = struct {
     fn append(c: *Cache, k: [dim]f64, v: [dim]f64) void {
         @memcpy(c.keys[c.len * dim ..][0..dim], &k);
         @memcpy(c.values[c.len * dim ..][0..dim], ⟪&v|||???⟫);
-        ⟪c.len += 1;|||???⟫
+        ⟪c.len += 1;|||???;⟫
     }
 };
 

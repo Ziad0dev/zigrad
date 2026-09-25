@@ -43,7 +43,7 @@ fn relu(out: []f32, a: []const f32) void {
 /// all about it.
 fn mulAdd(out: []f32, a: []const f32, b: []const f32, c: []const f32) void {
     // Write the loop. It looks like mul(), with one more slice.
-    ???
+    ???;
 }
 
 test "elementwise ops" {

@@ -321,7 +321,7 @@ fn train(m: Mlp, rand: std.Random, xs: []const f64, ys: []const usize, epochs: u
             // zero_grad, forward, backward, step
             for (m.params()) |p| ???;
             const loss = e.crossEntropy(m.forward(e, e.input(b, pixels, bx[0 .. b * pixels])), by[0..b]);
-            ???
+            ???;
             for (m.params()) |p| {
                 for (p.data, p.grad) |*w, g| ???;
             }

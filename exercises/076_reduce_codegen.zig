@@ -80,14 +80,14 @@ fn renderReduce(w: *std.Io.Writer, global: []const Dim, reduce: []const Dim) !vo
     try w.writeAll("float acc = 0.0f;\n");
     for (reduce, 0..) |d, i| {
         // Like the global loops above, with ridx.
-        ???
+        ???;
     }
     try indent(w, depth);
-    ???
+    ???;
     try renderIndex(w, global, reduce);
     try w.writeAll("];\n");
     for (reduce) |_| {
-        ???
+        ???;
         try indent(w, depth);
         try w.writeAll("}\n");
     }

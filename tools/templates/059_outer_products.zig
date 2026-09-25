@@ -42,7 +42,7 @@ fn matmulByOuter(a: []const f64, b: []const f64, m: usize, k: usize, n: usize, o
         // column kk of A, and row kk of B
         for (0..m) |i| col[i] = a[i * k + kk];
         const row = b[kk * n ..][0..n];
-        ⟪outer(col[0..m], row, piece[0 .. m * n]);|||???⟫
+        ⟪outer(col[0..m], row, piece[0 .. m * n]);|||???;⟫
         for (out, piece[0 .. m * n]) |*o, p| ⟪o.* += p|||???⟫;
     }
 }

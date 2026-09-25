@@ -53,7 +53,7 @@ const Adam = struct {
     /// AdamW: a normal Adam step, then decay separately.
     fn stepAdamW(o: *Adam, w: *f64, grad: f64) void {
         o.adamStep(w, grad);
-        ⟪w.* -= o.lr * o.wd * w.*;|||???⟫
+        ⟪w.* -= o.lr * o.wd * w.*;|||???;⟫
     }
 };
 

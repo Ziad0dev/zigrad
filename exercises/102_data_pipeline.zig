@@ -75,7 +75,7 @@ fn shuffle(rand: std.Random, idx: []usize) void {
     while (i > 1) {
         i -= 1;
         const j = rand.uintLessThan(usize, ???);
-        ???
+        ???;
     }
 }
 

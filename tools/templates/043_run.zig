@@ -44,7 +44,7 @@ fn run(k: Kernel, inputs: []const []const f32, out: []f32, regs: []f32, n: usize
         }
         const result = regs[k.insts.len - 1];
         if (k.reduce) {
-            ⟪acc += result;|||???⟫
+            ⟪acc += result;|||???;⟫
         } else {
             out[i] = result;
         }

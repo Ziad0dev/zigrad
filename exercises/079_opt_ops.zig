@@ -57,7 +57,7 @@ const Kernel = struct {
         const needs: Kind = if (opt.op == .unroll) .reduce else .global;
         if (ax.kind != needs) return error.WrongAxisKind;
         if (???) return error.DoesNotDivide;
-        ???
+        ???;
         k.push(.{ .size = opt.amount, .kind = switch (opt.op) {
             .local => .local,
             .upcast => .upcast,

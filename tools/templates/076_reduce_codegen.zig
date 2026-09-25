@@ -85,15 +85,15 @@ fn renderReduce(w: *std.Io.Writer, global: []const Dim, reduce: []const Dim) !vo
         depth += 1;
 //|||
         // Like the global loops above, with ridx.
-        ???
+        ???;
 //⟫
     }
     try indent(w, depth);
-    ⟪try w.writeAll("acc += in[");|||???⟫
+    ⟪try w.writeAll("acc += in[");|||???;⟫
     try renderIndex(w, global, reduce);
     try w.writeAll("];\n");
     for (reduce) |_| {
-        ⟪depth -= 1;|||???⟫
+        ⟪depth -= 1;|||???;⟫
         try indent(w, depth);
         try w.writeAll("}\n");
     }

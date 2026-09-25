@@ -64,7 +64,7 @@ fn maxAxis(v: View, data: []const f32, axis: usize, out: []f32) View {
 //|||
         // Same as sumAxis, but starting from max's identity (exercise 004).
         var acc: f32 = ???;
-        ???
+        ???;
 //⟫
         o.* = acc;
     }

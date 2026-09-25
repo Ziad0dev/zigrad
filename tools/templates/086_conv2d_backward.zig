@@ -38,7 +38,7 @@ fn col2im(c: Conv2d, d_cols: []const f64, h: usize, w: usize, dx: []f64) void {
                         const y = @as(isize, @intCast(oy * c.stride + i)) - @as(isize, @intCast(c.pad));
                         const xx = @as(isize, @intCast(ox * c.stride + j)) - @as(isize, @intCast(c.pad));
                         if (y < 0 or y >= h or xx < 0 or xx >= w) continue; // padding: no gradient
-                        ⟪dx[(ch * h + @as(usize, @intCast(y))) * w + @as(usize, @intCast(xx))] += d_cols[row * (oh * ow) + oy * ow + ox];|||???⟫
+                        ⟪dx[(ch * h + @as(usize, @intCast(y))) * w + @as(usize, @intCast(xx))] += d_cols[row * (oh * ow) + oy * ow + ox];|||???;⟫
                     }
                 }
             }

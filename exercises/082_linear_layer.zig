@@ -48,7 +48,7 @@ const Linear = struct {
         for (0..batch) |r| {
             for (0..l.out) |j| {
                 const g = dy[r * l.out + j];
-                ???
+                ???;
                 for (0..l.in) |k| {
                     dx[r * l.in + k] += ???;
                     dw[k * l.out + j] += ???;

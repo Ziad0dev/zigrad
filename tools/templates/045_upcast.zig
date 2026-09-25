@@ -45,12 +45,12 @@ fn sumUnrolled(x: []const f32) f32 {
         acc[2] += x[i + 2];
         acc[3] += x[i + 3];
 //|||
-        ???
+        ???;
 //⟫
     }
     // the leftovers
     while (i < x.len) : (i += 1) {
-        ⟪acc[0] += x[i];|||???⟫
+        ⟪acc[0] += x[i];|||???;⟫
     }
     return acc[0] + acc[1] + acc[2] + acc[3];
 }
@@ -60,7 +60,7 @@ fn sumVector(x: []const f32) f32 {
     var i: usize = 0;
     while (i + 4 <= x.len) : (i += 4) {
         const v: @Vector(4, f32) = x[i..][0..4].*;
-        ⟪acc += v;|||???⟫
+        ⟪acc += v;|||???;⟫
     }
     var total: f32 = ⟪@reduce(.Add, acc)|||???⟫;
     while (i < x.len) : (i += 1) total += x[i];

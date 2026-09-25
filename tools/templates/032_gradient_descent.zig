@@ -136,8 +136,8 @@ fn fitLine(xs: []const f64, ys: []const f64, lr: f64, steps: usize) [2]f64 {
         loss = e.mul(loss, e.leaf(1 / @as(f64, @floatFromInt(xs.len))));
         e.backward(loss);
 
-        ⟪w -= lr * wv.grad;|||???⟫
-        ⟪b -= lr * bv.grad;|||???⟫
+        ⟪w -= lr * wv.grad;|||???;⟫
+        ⟪b -= lr * bv.grad;|||???;⟫
     }
     return .{ w, b };
 }

@@ -42,7 +42,7 @@ fn keep(seed: u64, i: usize, p: f64) bool {
 fn dropout(x: []const f64, y: []f64, p: f64, seed: u64, training: bool) void {
     for (x, y, 0..) |v, *o, i| {
         if (!training) {
-            ???
+            ???;
         } else {
             o.* = if (keep(seed, i, p)) ??? else 0;
         }

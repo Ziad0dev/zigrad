@@ -30,7 +30,7 @@ fn mostFrequent(alloc: std.mem.Allocator, tokens: []const u32) !?Pair {
     for (0..tokens.len -| 1) |i| {
         const gop = try counts.getOrPut(.{ tokens[i], tokens[i + 1] });
         if (!gop.found_existing) gop.value_ptr.* = 0;
-        ⟪gop.value_ptr.* += 1;|||???⟫
+        ⟪gop.value_ptr.* += 1;|||???;⟫
     }
     var best: ?Pair = null;
     var best_count: usize = 1;
@@ -67,8 +67,8 @@ fn merge(alloc: std.mem.Allocator, tokens: []const u32, pair: Pair, new_id: u32)
 fn decode(alloc: std.mem.Allocator, merges: []const Pair, tok: u32, out: *std.ArrayList(u8)) !void {
     if (tok < 256) return out.append(alloc, @intCast(tok));
     const pair = merges[tok - 256];
-    ⟪try decode(alloc, merges, pair[0], out);|||???⟫
-    ⟪try decode(alloc, merges, pair[1], out);|||???⟫
+    ⟪try decode(alloc, merges, pair[0], out);|||???;⟫
+    ⟪try decode(alloc, merges, pair[1], out);|||???;⟫
 }
 
 test "the classic example" {

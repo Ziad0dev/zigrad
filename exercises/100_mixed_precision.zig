@@ -41,14 +41,14 @@ const Scaler = struct {
     fn update(s: *Scaler, grads: []const f16) bool {
         for (grads) |g| {
             if (std.math.isInf(g) or std.math.isNan(g)) {
-                ???
+                ???;
                 s.good_steps = 0;
                 return false;
             }
         }
         s.good_steps += 1;
         if (s.good_steps == s.interval) {
-            ???
+            ???;
             s.good_steps = 0;
         }
         return true;

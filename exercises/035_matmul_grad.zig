@@ -56,8 +56,8 @@ fn matmulGrad(alloc: std.mem.Allocator, a: []const f64, b: []const f64, dc: []co
     // dB = Aᵀ · dC       [k, m] · [m, n] = [k, n]
     const at = try alloc.alloc(f64, m * k);
     defer alloc.free(at);
-    ???
-    ???
+    ???;
+    ???;
 }
 
 // loss = sum of C[i][j] * R[i][j]. Its grad with respect to C is just R.

@@ -32,7 +32,7 @@ fn accumulatedGrad(w: f64, xs: []const f64, ys: []const f64, micro: usize) f64 {
     var k: usize = 0;
     var start: usize = 0;
     while (start < xs.len) : (start += micro) {
-        ???
+        ???;
         k += 1;
     }
     return ???;

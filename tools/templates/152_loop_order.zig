@@ -48,7 +48,7 @@ fn ikj(c: *Cache) void {
                 c.access(c_base + (i * n + j) * 4);
 //|||
                 // read B[k][j] and C[i][j]
-                ???
+                ???;
 //⟫
             }
         }

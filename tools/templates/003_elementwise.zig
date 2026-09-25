@@ -46,7 +46,7 @@ fn mulAdd(out: []f32, a: []const f32, b: []const f32, c: []const f32) void {
     for (out, a, b, c) |*o, x, y, z| o.* = x * y + z;
 //|||
     // Write the loop. It looks like mul(), with one more slice.
-    ???
+    ???;
 //⟫
 }
 

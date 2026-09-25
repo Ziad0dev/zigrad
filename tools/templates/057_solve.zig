@@ -46,7 +46,7 @@ fn solve(a: []f64, b: []f64, n: usize) void {
         for (col + 1..n) |r| {
             const factor = ⟪a[r * n + col] / a[col * n + col]|||???⟫;
             for (col..n) |c| a[r * n + c] -= factor * a[col * n + c];
-            ⟪b[r] -= factor * b[col];|||???⟫
+            ⟪b[r] -= factor * b[col];|||???;⟫
         }
     }
     // back substitution, bottom row first

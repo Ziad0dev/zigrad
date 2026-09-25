@@ -97,6 +97,6 @@ test "render, compile, load, run" {
     const b = [_]f32{ 2, 2, -1, 4 };
     const c = [_]f32{ 1, 1, 1, -3 };
     var out: [n]f32 = undefined;
-    ⟪kernel(&out, &a, &b, &c, n);|||???⟫
+    ⟪kernel(&out, &a, &b, &c, n);|||???;⟫
     try std.testing.expectEqualSlices(f32, &.{ 3, 0, 0, 0 }, &out);
 }

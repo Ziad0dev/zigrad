@@ -108,7 +108,7 @@ const Linearizer = struct {
 
         const id = l.insts.items.len;
         try l.insts.append(l.alloc, inst);
-        ???
+        ???;
         return id;
     }
 };

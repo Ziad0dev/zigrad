@@ -81,7 +81,7 @@ const Jit = struct {
             @memcpy(rt.bufs[x_buf], x);
             for (launches) |l| rt.launch(l);
 //|||
-            ???
+            ???;
 //⟫
         } else {
             // capture: do everything the slow way, and remember the kernels

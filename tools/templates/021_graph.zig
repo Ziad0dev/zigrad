@@ -69,7 +69,7 @@ fn render(n: *const Node, w: *std.Io.Writer) std.Io.Writer.Error!void {
             try w.writeAll("(");
             try render(n.src[0], w);
             try w.writeAll(if (n.op == .add) " + " else " * ");
-            ⟪try render(n.src[1], w);|||???⟫
+            ⟪try render(n.src[1], w);|||???;⟫
             try w.writeAll(")");
         },
     }

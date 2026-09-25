@@ -182,7 +182,7 @@ pub const Tensor = struct {
         for (t.src) |s| {
             if (s.buf != null) continue; //       has memory already
             if (s.op == .sum) {
-                ⟪_ = s.realize();|||???⟫ //               a reduce is its own kernel
+                ⟪_ = s.realize();|||???;⟫ //               a reduce is its own kernel
             } else {
                 s.realizeDeps(); //               elementwise: fused into ours
             }

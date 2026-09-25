@@ -61,7 +61,7 @@ const Linearizer = struct {
 
         const id = l.insts.items.len;
         try l.insts.append(l.alloc, inst);
-        ⟪try l.ids.put(n, id);|||???⟫
+        ⟪try l.ids.put(n, id);|||???;⟫
         return id;
     }
 };

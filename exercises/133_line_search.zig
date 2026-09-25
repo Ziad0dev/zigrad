@@ -34,7 +34,7 @@ fn backtrack(x: [2]f64, g: [2]f64, c: f64) f64 {
     const g2 = g[0] * g[0] + g[1] * g[1];
     var t: f64 = 1;
     while (???) {
-        ???
+        ???;
     }
     return t;
 }

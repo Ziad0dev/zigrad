@@ -44,7 +44,7 @@ fn sweep(v: *[cells]f64, gamma: f64) f64 {
             best = @max(best, ⟪reward(s, a) + gamma * v[next(s, a)]|||???⟫);
         }
         change = @max(change, @abs(best - v[s]));
-        ⟪v[s] = best;|||???⟫
+        ⟪v[s] = best;|||???;⟫
     }
     return change;
 }

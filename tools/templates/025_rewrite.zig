@@ -99,7 +99,7 @@ fn mulOne(g: *Graph, n: *const Node) ?*const Node {
     if (isConst(n.src[0], 1)) return n.src[1];
     return null;
 //|||
-    ???
+    ???;
 //⟫
 }
 
@@ -110,7 +110,7 @@ fn mulZero(g: *Graph, n: *const Node) ?*const Node {
     if (isConst(n.src[0], 0) or isConst(n.src[1], 0)) return g.constant(0);
     return null;
 //|||
-    ???
+    ???;
 //⟫
 }
 

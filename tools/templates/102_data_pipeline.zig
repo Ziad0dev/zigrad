@@ -36,7 +36,7 @@ fn shuffle(rand: std.Random, idx: []usize) void {
     while (i > 1) {
         i -= 1;
         const j = rand.uintLessThan(usize, ⟪i + 1|||???⟫);
-        ⟪std.mem.swap(usize, &idx[i], &idx[j]);|||???⟫
+        ⟪std.mem.swap(usize, &idx[i], &idx[j]);|||???;⟫
     }
 }
 
