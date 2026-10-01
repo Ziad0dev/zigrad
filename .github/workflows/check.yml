@@ -22,5 +22,7 @@ jobs:
         run: zig build -Dsolutions
       - name: The one-file example
         run: zig test examples/tinygrad_in_one_file.zig
+      - name: The final project's compiler
+        run: zig test project/minicompiler.zig
       - name: Formatting
-        run: zig fmt --check build.zig examples
+        run: zig fmt --check build.zig examples project
