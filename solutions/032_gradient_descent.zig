@@ -25,7 +25,8 @@
 //
 // Then something more useful: find the line w*x + b through some points,
 // by minimizing the *mean squared error*, the average of
-// (prediction - truth)^2. That's the intro lesson's training loop.
+// (prediction - truth)^2. That's every training loop in this course,
+// in miniature.
 //
 // Zig note: an arena can be reset() between steps. It keeps its memory,
 // so each new graph reuses it instead of asking the OS again.

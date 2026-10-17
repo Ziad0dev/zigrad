@@ -17,6 +17,8 @@
 //     ("replay"). Ours copies the new numbers into the old input buffer;
 //     tinygrad swaps in the new buffers themselves, which saves the copy.
 //
+// (To keep it short, ours captures on the very first call.)
+//
 // The catch: a replay is a recording. Anything your function decided
 // while capturing (the shapes, which branch of an `if` it took) is frozen
 // in. Change the input shape and the recording is wrong, so the JIT must

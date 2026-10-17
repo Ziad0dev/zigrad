@@ -54,6 +54,13 @@ fn meanVar(xs: []const f64) [2]f64 {
     return .{ m, v / n };
 }
 
+test "Box-Muller, exactly" {
+    // sqrt(-2 ln(e^-0.5)) = 1, and cos(2π * 0.5) = cos(π) = -1
+    try std.testing.expectApproxEqAbs(-1.0, boxMuller(@exp(-0.5), 0.5), 1e-12);
+    // sqrt(-2 ln(e^-2)) = 2, and cos(0) = 1
+    try std.testing.expectApproxEqAbs(2.0, boxMuller(@exp(-2.0), 0), 1e-12);
+}
+
 test "Box-Muller gives a standard normal" {
     var prng = std.Random.DefaultPrng.init(60);
     const xs = try std.testing.allocator.alloc(f64, 100_000);

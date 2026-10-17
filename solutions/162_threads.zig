@@ -63,6 +63,9 @@ fn rowSumsOfSquares(x: []const f32, rows: usize, cols: usize, out: []f32, t: usi
 test "row ranges cover every row exactly once" {
     try std.testing.expectEqual([2]usize{ 0, 3 }, rowRange(10, 4, 0));
     try std.testing.expectEqual([2]usize{ 9, 10 }, rowRange(10, 4, 3));
+    // when it divides evenly, every thread gets the same share
+    try std.testing.expectEqual([2]usize{ 0, 2 }, rowRange(8, 4, 0));
+    try std.testing.expectEqual([2]usize{ 6, 8 }, rowRange(8, 4, 3));
     // more threads than rows: the extra threads get nothing
     try std.testing.expectEqual([2]usize{ 2, 2 }, rowRange(2, 4, 3));
     for (1..9) |t| {

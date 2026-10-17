@@ -44,6 +44,11 @@ test "bigger blocks reuse more" {
     try std.testing.expectApproxEqAbs(2.0, intensity(4, 4), 1e-12);
 }
 
+test "using every register is fine, one more isn't" {
+    try std.testing.expect(fits(7, 7, 63)); // 49 + 14 = 63, exactly the budget
+    try std.testing.expect(!fits(7, 7, 62));
+}
+
 test "the best block for 64 registers" {
     const b = bestBlock(64);
     try std.testing.expectEqual([2]usize{ 7, 7 }, b); // 49 + 14 = 63 registers

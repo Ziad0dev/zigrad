@@ -55,6 +55,10 @@ fn absolute(x: f64) f64 {
 fn expo(x: f64) f64 {
     return @exp(x);
 }
+/// Shifting a function up or down can't change its shape.
+fn shifted(x: f64) f64 {
+    return x * x - 10;
+}
 fn sine(x: f64) f64 {
     return @sin(x);
 }
@@ -72,6 +76,7 @@ test "convex" {
     try std.testing.expect(looksConvex(&absolute, -3, 3));
     try std.testing.expect(looksConvex(&expo, -3, 3));
     try std.testing.expect(looksConvex(&linearLoss, -5, 5));
+    try std.testing.expect(looksConvex(&shifted, -3, 3)); // negative values are fine
 }
 
 test "not convex" {

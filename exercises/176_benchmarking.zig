@@ -59,6 +59,14 @@ test "warmup and outliers" {
     try std.testing.expect(s.mean > 0.0023);
 }
 
+test "small and exact" {
+    // warmup 9 is dropped; then 3, 1, 2
+    const s = try stats(std.testing.allocator, &.{ 9, 3, 1, 2 }, 1);
+    try std.testing.expectEqual(1, s.min);
+    try std.testing.expectEqual(2, s.median);
+    try std.testing.expectEqual(2, s.mean);
+}
+
 test "rates" {
     // a 4096^3 matmul (2 n^3 flops) in 2 ms
     const n = 4096.0;

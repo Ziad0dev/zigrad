@@ -94,6 +94,12 @@ test "routing one token" {
     try std.testing.expectApproxEqAbs(2.5, moe(1, logits), 1e-12);
 }
 
+test "big logits don't overflow" {
+    const w = weights(.{ 400, 399, 0, 0 }, .{ 0, 1 });
+    // e^0 : e^-1, computed without ever forming e^400
+    try std.testing.expectApproxEqAbs(1 / (1 + @exp(@as(f64, -1))), w[0], 1e-12);
+}
+
 test "load per expert" {
     const tokens = [_][E]f64{
         .{ 3, 2, 0, 0 },

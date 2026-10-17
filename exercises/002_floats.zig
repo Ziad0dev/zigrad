@@ -15,8 +15,8 @@
 //    the last few digits.
 //
 // 3. Numbers can overflow to infinity (inf), and some operations give
-//    "not a number" (nan), like inf - inf. One nan poisons every result
-//    it touches. Exercise 018 (softmax) is all about dodging this.
+//    "not a number" (nan), like inf - inf. A nan poisons nearly every
+//    result it touches. Exercise 018 (softmax) is all about dodging this.
 //
 // YOUR TASK: write approxEq, then predict what the floats will do.
 //
@@ -34,6 +34,7 @@ test "close enough is good enough" {
     try std.testing.expect(total != 1.0); // ten 0.1s are NOT exactly 1...
     try std.testing.expect(approxEq(total, 1.0, 1e-5)); // ...but close.
     try std.testing.expect(!approxEq(1.0, 1.1, 1e-5));
+    try std.testing.expect(approxEq(1.0, 1.5, 0.5)); // exactly the tolerance away still counts
 }
 
 test "big numbers swallow small ones" {

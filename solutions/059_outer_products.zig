@@ -66,6 +66,11 @@ test "matmul is a sum of outer products" {
     var c: [4]f64 = undefined;
     matmulByOuter(&a, &b, 2, 3, 2, &c);
     try std.testing.expectEqualSlices(f64, &.{ 58, 64, 139, 154 }, &c); // exercise 019's answer
+
+    // not square: [3, 2] · [2, 3] is [3, 3]
+    var c3: [9]f64 = undefined;
+    matmulByOuter(&a, &b, 3, 2, 3, &c3);
+    try std.testing.expectEqualSlices(f64, &.{ 27, 30, 33, 61, 68, 75, 95, 106, 117 }, &c3);
 }
 
 test "LoRA is tiny" {

@@ -52,6 +52,13 @@ fn sample(p: [vocab]f64, u: f64) usize {
     return vocab - 1;
 }
 
+test "acceptance and leftovers" {
+    try std.testing.expectEqual(1, acceptProb(0)); //          p > q: always keep it
+    try std.testing.expectApproxEqAbs(0.5, acceptProb(1), 1e-12); // p = 0.2, q = 0.4
+    // only token 0 has p > q, so a rejection always resamples token 0
+    try std.testing.expectEqualSlices(f64, &.{ 1, 0, 0, 0 }, &leftover());
+}
+
 test "the result is distributed exactly like the big model" {
     var prng = std.Random.DefaultPrng.init(144);
     const rand = prng.random();

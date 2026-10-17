@@ -10,12 +10,17 @@
 // nothing matches any more. Simplifying maths, turning tensor ops into
 // index maths, lowering to GPU instructions: all just lists of rules.
 //
-// Some simple, always-true rules:
+// Some simple rules:
 //
 //     x + 0  ->  x
 //     x * 1  ->  x
 //     x * 0  ->  0
 //     2 + 3  ->  5          ("constant folding": do the maths right now)
+//
+// (Careful: for floats, x * 0 isn't always 0. inf * 0 and nan * 0 are
+// nan. tinygrad uses the rule anyway, and its source admits "this can be
+// wrong for loaded NaN". Compilers trade a little exactness for speed
+// all the time; the trick is knowing where.)
 //
 // And the procedure:
 //   1. rewrite the sources first (bottom-up)
@@ -171,6 +176,9 @@ test "simplify" {
     try expectRewrite("7", &g, g.add(g.mul(x, g.mul(y, g.constant(0))), g.constant(7)));
     // ((2 * 3) + x) * 1
     try expectRewrite("(6 + x)", &g, g.mul(g.add(g.mul(g.constant(2), g.constant(3)), x), g.constant(1)));
+    // constants on the left work too
+    try expectRewrite("x", &g, g.mul(g.constant(1), x));
+    try expectRewrite("0", &g, g.mul(g.constant(0), y));
     // nothing to do
     try expectRewrite("(x + y)", &g, g.add(x, y));
 }

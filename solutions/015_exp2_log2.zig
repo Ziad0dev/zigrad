@@ -3,10 +3,10 @@
 //
 // ─── Exercise 015: exp2 and log2 ───────────────────────────────────────
 //
-// Chapter 3: tinygrad's big simplification. It has only a few dozen
-// primitive ops, and EVERYTHING else (softmax, matmul, convolution...)
-// is built by combining them. A new chip only has to learn the
-// primitives, and it runs all of deep learning.
+// Chapter 3: tinygrad's big simplification. It has only about 25
+// low-level ops (its README's count), and EVERYTHING else (softmax,
+// matmul, convolution...) is built by combining them. A new chip only has
+// to learn those, and it runs all of deep learning.
 //
 // Let's start with exponentials. Chips don't have an e^x instruction.
 // GPUs have fast 2^x ("exp2") and log2 instructions instead, because

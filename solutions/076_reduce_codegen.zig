@@ -9,8 +9,8 @@
 //   * global axes, one per output dimension. On a GPU they become thread
 //     indexes, which tinygrad names gidx0, gidx1, ...
 //   * reduce axes, the dimensions being summed, which become loops INSIDE
-//     each output element, with an accumulator. tinygrad names them
-//     Ridx0, Ridx1, ...; we'll write ridx.
+//     each output element, with an accumulator. tinygrad prints plain
+//     loops as Lidx0, Lidx1, ...; we'll write ridx, to tell them apart.
 //
 // Row sums of a [4, 3] tensor: one global axis (4 rows) and one reduce
 // axis (3 columns):
@@ -26,7 +26,9 @@
 //     }
 //
 // (Run tinygrad with DEV=CPU NOOPT=1 DEBUG=4 on x.sum(1) for a [4, 3] x,
-// and you'll see essentially this kernel, its CPU loop named Lidx1.)
+// and you'll see essentially this kernel. A CPU has no GPU threads, so
+// both loops are plain loops there: Lidx1 for the rows, Lidx0 for the
+// reduce. Its accumulator is a one-element array, buf0[1].)
 //
 // Each loop variable reads the input with its own stride (a view, 009).
 // Summing the COLUMNS instead just swaps the roles: gidx0 walks the 3

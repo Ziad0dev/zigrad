@@ -27,7 +27,7 @@ const std = @import("std");
 
 // ─── 1. The primitive ops ───────────────────────────────────────────────
 //
-// tinygrad's big trick: only a few dozen primitive ops exist. Everything
+// tinygrad's big trick: only about 25 low-level ops exist. Everything
 // else (relu, mean, softmax, conv2d...) is built by combining them, so a
 // new backend (GPU, etc.) only has to know how to run the primitives.
 // We use 7.

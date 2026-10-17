@@ -62,4 +62,6 @@ test "the best k is about sqrt(n)" {
 
 test "the price: less than one extra forward pass" {
     try std.testing.expect(forwardEvals(100, 10) < 200);
+    try std.testing.expectEqual(190, forwardEvals(100, 10)); // 100, plus 9 per segment
+    try std.testing.expectEqual(17, forwardEvals(10, 4)); //    segments of 4, 4, 2: 10 + 3 + 3 + 1
 }
