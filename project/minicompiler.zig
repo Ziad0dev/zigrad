@@ -7,13 +7,17 @@
 //!   compile with `zig cc` and load with std.DynLib (052)  ->  run and
 //!   benchmark (176)
 //!
+//! Plus an oracle: a slow, obviously correct interpreter that every
+//! compiled result can be checked against, and a fuzz test that does.
+//!
 //! A matmul is written the tinygrad way, as reshape + expand + mul + sum
 //! (019), and this compiler fuses it into ONE C kernel, compiles it, and
 //! times it against a plain Zig triple loop.
 //!
 //!   Run it:  zig test project/minicompiler.zig
 //!
-//! Then read project/README.md for the milestones to extend it with.
+//! Then read project/README.md: it grows this, week by week, into the
+//! compiler of George Hotz's Compilers for Machine Learning course.
 
 const std = @import("std");
 
@@ -335,7 +339,96 @@ pub const Runtime = struct {
     }
 };
 
-// ─── 5. Tests: correctness, then a benchmark ────────────────────────────
+// ─── 5. The oracle: a slow, obviously correct interpreter ───────────────
+//
+// Computes a node the most boring way there is: whole tensors, one op at a
+// time, nothing fused, nothing compiled, no index strings. It only reads
+// .data on buffers, so it gives the same answer before and after realize.
+//
+// This is what makes testing cheap: any graph at all becomes a test, by
+// checking that the compiled result matches this one (expectMatchesOracle).
+// Change the compiler however you like; the oracle stays put.
+
+/// Row-major position of a multi-index (007).
+fn ravel(idx: []const usize, shape: []const usize) usize {
+    var pos: usize = 0;
+    for (idx, shape) |i, d| pos = pos * d + i;
+    return pos;
+}
+
+/// The multi-index of a row-major position (008).
+fn unravel(pos: usize, shape: []const usize, idx: []usize) void {
+    var p = pos;
+    var i = shape.len;
+    while (i > 0) {
+        i -= 1;
+        idx[i] = p % shape[i];
+        p /= shape[i];
+    }
+}
+
+pub fn interpret(alloc: std.mem.Allocator, n: *Node) []f32 {
+    const out = alloc.alloc(f32, numel(n.shape)) catch @panic("OOM");
+    switch (n.op) {
+        .buffer => @memcpy(out, n.data.?),
+        .constant => @memset(out, n.value),
+        .neg => for (out, interpret(alloc, n.src[0].?)) |*o, a| {
+            o.* = -a;
+        },
+        .add, .mul, .max => {
+            const a = interpret(alloc, n.src[0].?);
+            const b = interpret(alloc, n.src[1].?);
+            for (out, a, b) |*o, x, y| o.* = switch (n.op) {
+                .add => x + y,
+                .mul => x * y,
+                else => @max(x, y),
+            };
+        },
+        .sum => {
+            const src = n.src[0].?;
+            const a = interpret(alloc, src);
+            const r = src.shape[src.shape.len - 1];
+            for (out, 0..) |*o, i| {
+                var acc: f32 = 0;
+                for (a[i * r ..][0..r]) |v| acc += v;
+                o.* = acc;
+            }
+        },
+        .reshape => @memcpy(out, interpret(alloc, n.src[0].?)), // row-major data is unchanged
+        .permute, .expand => {
+            const src = n.src[0].?;
+            const a = interpret(alloc, src);
+            const idx = alloc.alloc(usize, n.shape.len) catch @panic("OOM");
+            const sidx = alloc.alloc(usize, src.shape.len) catch @panic("OOM");
+            for (out, 0..) |*o, pos| {
+                unravel(pos, n.shape, idx);
+                if (n.op == .permute) {
+                    for (n.perm, idx) |p, i| sidx[p] = i;
+                } else {
+                    for (sidx, src.shape, idx) |*s, d, i| s.* = if (d == 1) 0 else i;
+                }
+                o.* = a[ravel(sidx, src.shape)];
+            }
+        },
+    }
+    return out;
+}
+
+/// Realize n with the compiler and check it against the oracle. Results
+/// can differ by rounding (the C compiler may fuse a*b+c into one FMA),
+/// so the comparison allows a tiny relative error.
+pub fn expectMatchesOracle(rt: *Runtime, arena: std.mem.Allocator, n: *Node) !void {
+    const want = interpret(arena, n);
+    const got = try rt.realize(arena, n);
+    for (want, got, 0..) |w, x, i| {
+        if (@abs(w - x) > 1e-5 * @max(1, @abs(w))) {
+            std.debug.print("element {d}: compiled {d}, oracle {d}\n", .{ i, x, w });
+            return error.TestExpectedEqual;
+        }
+    }
+}
+
+// ─── 6. Tests: correctness, then a benchmark ────────────────────────────
 
 fn testRuntime(_: std.mem.Allocator, dir: []const u8) Runtime {
     return .{ .alloc = std.testing.allocator, .io = std.testing.io, .dir = dir };
@@ -343,6 +436,59 @@ fn testRuntime(_: std.mem.Allocator, dir: []const u8) Runtime {
 
 fn tmpPath(tmp: *std.testing.TmpDir, buf: []u8) ![]const u8 {
     return buf[0..try tmp.dir.realPath(std.testing.io, buf)];
+}
+
+/// A random graph with output `shape`, `depth` ops deep, on small
+/// integer data. Every op and every movement can appear, so this finds
+/// the cases nobody thought to write a test for.
+fn randomGraph(g: Graph, r: std.Random, shape: []const usize, depth: usize) *Node {
+    if (depth == 0) {
+        if (r.uintLessThan(u8, 8) == 0) return g.constant(shape, @floatFromInt(r.intRangeAtMost(i8, -3, 3)));
+        const data = g.alloc.alloc(f32, numel(shape)) catch @panic("OOM");
+        for (data) |*v| v.* = @floatFromInt(r.intRangeAtMost(i8, -3, 3));
+        return g.buffer(shape, data);
+    }
+    const s = g.alloc.dupe(usize, shape) catch @panic("OOM");
+    switch (r.uintLessThan(u8, 7)) {
+        0 => return g.neg(randomGraph(g, r, shape, depth - 1)),
+        1, 2 => {
+            const a = randomGraph(g, r, shape, depth - 1);
+            const b = randomGraph(g, r, shape, depth - 1);
+            return switch (r.uintLessThan(u8, 3)) {
+                0 => g.add(a, b),
+                1 => g.mul(a, b),
+                else => g.max(a, b),
+            };
+        },
+        3 => {
+            // sum a longer last axis down to 1, then stretch it back if needed
+            s[s.len - 1] = 1 + r.uintLessThan(usize, 5);
+            const summed = g.sum(randomGraph(g, r, s, depth - 1));
+            return if (shape[shape.len - 1] == 1) summed else g.expand(summed, shape);
+        },
+        4 => {
+            // a random permutation p, so that src.shape[p[i]] == shape[i]
+            const p = g.alloc.alloc(usize, shape.len) catch @panic("OOM");
+            for (p, 0..) |*v, i| v.* = i;
+            var i = p.len;
+            while (i > 1) : (i -= 1) std.mem.swap(usize, &p[i - 1], &p[r.uintLessThan(usize, i)]);
+            for (p, shape) |pi, d| s[pi] = d;
+            return g.permute(randomGraph(g, r, s, depth - 1), p);
+        },
+        5 => {
+            // reshape from the same numbers in another shape: flat, or reversed
+            if (r.boolean()) return g.reshape(randomGraph(g, r, &.{numel(shape)}, depth - 1), shape);
+            std.mem.reverse(usize, s);
+            return g.reshape(randomGraph(g, r, s, depth - 1), shape);
+        },
+        else => {
+            // expand a size-1 axis, if there's an axis to stretch
+            const axis = r.uintLessThan(usize, shape.len);
+            if (shape[axis] == 1) return g.neg(randomGraph(g, r, shape, depth - 1));
+            s[axis] = 1;
+            return g.expand(randomGraph(g, r, s, depth - 1), shape);
+        },
+    }
 }
 
 test "elementwise ops fuse into one kernel" {
@@ -428,6 +574,44 @@ test "matmul from movement ops, fused into one kernel, matches the triple loop" 
     };
 }
 
+test "the oracle agrees with hand-computed answers" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+    const g: Graph = .{ .alloc = alloc };
+
+    var a = [_]f32{ 1, 2, 3, 4, 5, 6 }; // [2, 3]
+    var b = [_]f32{ 1, 0, 2, 1, 0, 1 }; // [3, 2]
+    const x = g.buffer(&.{ 2, 3 }, &a);
+    try std.testing.expectEqualSlices(f32, &.{ 1, 4, 2, 5, 3, 6 }, interpret(alloc, g.permute(x, &.{ 1, 0 })));
+    try std.testing.expectEqualSlices(f32, &.{ 6, 15 }, interpret(alloc, g.sum(x)));
+    try std.testing.expectEqualSlices(f32, &.{ 6, 6, 15, 15 }, interpret(alloc, g.expand(g.reshape(g.sum(x), &.{ 2, 1 }), &.{ 2, 2 })));
+    try std.testing.expectEqualSlices(f32, &.{ 5, 5, 14, 11 }, interpret(alloc, g.matmul(x, g.buffer(&.{ 3, 2 }, &b))));
+}
+
+test "fuzz: random graphs, compiled vs the oracle" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+    const g: Graph = .{ .alloc = alloc };
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    var buf: [4096]u8 = undefined;
+    var rt = testRuntime(alloc, try tmpPath(&tmp, &buf));
+    defer rt.deinit();
+
+    const shapes = [_][]const usize{ &.{6}, &.{ 2, 3 }, &.{ 3, 1, 4 }, &.{ 2, 2, 3 } };
+    for (0..12) |seed| {
+        var prng: std.Random.DefaultPrng = .init(seed);
+        const r = prng.random();
+        const n = randomGraph(g, r, shapes[seed % shapes.len], 2 + seed % 3);
+        expectMatchesOracle(&rt, alloc, n) catch |err| {
+            std.debug.print("fuzz seed {d} failed\n", .{seed});
+            return err;
+        };
+    }
+}
+
 test "benchmark: compiled matmul vs a plain Zig loop" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -485,7 +669,7 @@ test "benchmark: compiled matmul vs a plain Zig loop" {
         \\{d}x{d} matmul, best of 5 (176):
         \\  compiled from the graph:  {d:8.3} ms  {d:7.2} GFLOPS
         \\  plain Zig triple loop:    {d:8.3} ms  {d:7.2} GFLOPS  (debug build of the test)
-        \\Milestone 3 of project/README.md: make the compiled one fast.
+        \\Week 6 of project/README.md: make the compiled one fast.
         \\
     , .{ n, n, best_compiled * 1e3, flops / best_compiled / 1e9, best_naive * 1e3, flops / best_naive / 1e9 });
 }
