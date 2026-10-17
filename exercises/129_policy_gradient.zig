@@ -45,6 +45,12 @@ fn gradLogPi(p: [arms]f64, a: usize) [arms]f64 {
     return g;
 }
 
+/// One REINFORCE step: action a got reward r.
+fn reinforce(theta: *[arms]f64, a: usize, r: f64, baseline: f64, lr: f64) void {
+    const g = gradLogPi(softmax(theta.*), a);
+    for (theta, g) |*t, gi| ???;
+}
+
 test "REINFORCE learns to prefer the best arm" {
     var prng = std.Random.DefaultPrng.init(129);
     const rand = prng.random();
@@ -65,11 +71,22 @@ test "REINFORCE learns to prefer the best arm" {
             }
         }
         const r: f64 = if (rand.float(f64) < true_means[a]) 1 else 0;
-        const g = gradLogPi(p, a);
-        for (&theta, g) |*t, gi| ???;
+        reinforce(&theta, a, r, baseline, lr);
         baseline += 0.01 * (r - baseline);
     }
     try std.testing.expect(softmax(theta)[1] > 0.9);
+}
+
+test "one step by hand" {
+    // uniform policy (π = 1/4 each), arm 1 paid 1, the baseline is 0.5:
+    // θ += 0.1 * (1 - 0.5) * (onehot(1) - π)
+    var theta: [arms]f64 = @splat(0);
+    reinforce(&theta, 1, 1, 0.5, 0.1);
+    try std.testing.expectApproxEqAbs(0.05 * 0.75, theta[1], 1e-12);
+    for ([_]usize{ 0, 2, 3 }) |i| try std.testing.expectApproxEqAbs(0.05 * -0.25, theta[i], 1e-12);
+    // worse than the baseline: the action becomes LESS likely
+    reinforce(&theta, 2, 0, 0.5, 0.1);
+    try std.testing.expect(theta[2] < 0.05 * -0.25);
 }
 
 test "the gradient of log π matches the slope" {

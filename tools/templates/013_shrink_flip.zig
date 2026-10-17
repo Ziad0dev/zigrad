@@ -52,6 +52,7 @@ const View = struct {
 test "shrink" {
     const memory = [_]f32{ 1, 2, 3, 4, 5, 6, 7, 8, 9 };
     const v = View.init(&.{ 3, 3 }).shrink(&.{ .{ 1, 3 }, .{ 0, 2 } });
+    try std.testing.expectEqualSlices(usize, &.{ 2, 2 }, v.shape[0..v.ndim]);
     var out: [4]f32 = undefined;
     contiguous(v, &memory, &out);
     try std.testing.expectEqualSlices(f32, &.{ 4, 5, 7, 8 }, &out);

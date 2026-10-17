@@ -63,6 +63,8 @@ test "batching is free until the crossover" {
     const bw = 3.35e12;
     const b = crossoverBatch(2, bw, peak);
     try std.testing.expectApproxEqRel(295.2238805970149, b, 1e-9);
+    // at the crossover, the compute time equals the memory time exactly
+    try std.testing.expectApproxEqRel(7e9 * 2 / bw, stepTime(7e9, 2, b, bw, peak), 1e-9);
     // batch 1 and batch 64 take the same time per step...
     try std.testing.expectEqual(stepTime(7e9, 2, 1, bw, peak), stepTime(7e9, 2, 64, bw, peak));
     // ...but past the crossover the step gets slower

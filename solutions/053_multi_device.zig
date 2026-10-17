@@ -74,6 +74,9 @@ test "sharding" {
     // 10 over 4: slices of 3, 3, 3, 1
     try std.testing.expectEqual([2]usize{ 3, 6 }, shardRange(10, 4, 1));
     try std.testing.expectEqual([2]usize{ 9, 10 }, shardRange(10, 4, 3));
+    // 9 over 4: slices of 3, 3, 3, and nothing left for the last device
+    try std.testing.expectEqual([2]usize{ 6, 9 }, shardRange(9, 4, 2));
+    try std.testing.expectEqual([2]usize{ 9, 9 }, shardRange(9, 4, 3));
 }
 
 test "all-reduce" {

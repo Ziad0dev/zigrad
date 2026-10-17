@@ -12,6 +12,9 @@
 //     all negative     maximum
 //     mixed signs      saddle
 //
+// (A zero eigenvalue means the second derivative can't decide, and you'd
+// need higher derivatives. We leave that case out.)
+//
 // For a symmetric 2x2 Hessian | a b |, the eigenvalues have a closed form:
 //                             | b c |
 //     λ = (a + c)/2 ± sqrt( ((a - c)/2)^2 + b^2 )
@@ -46,6 +49,10 @@ test "eigenvalues" {
     const l = eigenvalues(2, 1, 2);
     try std.testing.expectApproxEqAbs(1.0, l[0], 1e-12);
     try std.testing.expectApproxEqAbs(3.0, l[1], 1e-12);
+    // a != c: mid 2, radius sqrt(3^2 + 4^2) = 5
+    const m = eigenvalues(5, 4, -1);
+    try std.testing.expectApproxEqAbs(-3.0, m[0], 1e-12);
+    try std.testing.expectApproxEqAbs(7.0, m[1], 1e-12);
 }
 
 test "classifying critical points" {
@@ -53,6 +60,11 @@ test "classifying critical points" {
     try std.testing.expectEqual(.maximum, classify(-2, 0, -2)); //  -x² - y²
     try std.testing.expectEqual(.saddle, classify(2, 0, -2)); //    x² - y²
     try std.testing.expectEqual(.saddle, classify(0, 1, 0)); //     2xy, a rotated saddle
+    try std.testing.expectEqual(.minimum, classify(0.5, 0, 0.5)); // gently curved still counts
+    try std.testing.expectEqual(.maximum, classify(-0.5, 0, -0.5));
+    // one gentle direction is still enough to make a saddle
+    try std.testing.expectEqual(.saddle, classify(0.5, 0, -2));
+    try std.testing.expectEqual(.saddle, classify(-0.5, 0, 2));
 }
 
 test "gradient descent escapes a saddle, slowly" {

@@ -197,6 +197,20 @@ test "signs flip" {
     const a = g.variable("a", -2, 3);
     const b = g.variable("b", -4, 1);
     try expectBounds(-12, 8, g.mul(a, b));
+    // any of the four corners can be the min or the max
+    try expectBounds(-6, 2, g.mul(g.variable("c", -3, 1), g.variable("d", 0, 2)));
+    try expectBounds(2, 12, g.mul(g.variable("e", 1, 3), g.variable("f", 2, 4)));
+    try expectBounds(2, 12, g.mul(g.variable("p", -3, -1), g.variable("q", -4, -2)));
+}
+
+test "mod edge cases" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    var g: Graph = .init(arena.allocator());
+    // reaching d itself doesn't fit: 3 % 3 = 0
+    try expectBounds(0, 2, g.mod(g.variable("a", 0, 3), g.c(3)));
+    // starting below 0 doesn't fit either: -1 % 3 = 2
+    try expectBounds(0, 2, g.mod(g.variable("b", -2, 2), g.c(3)));
 }
 
 test "bounds really bound" {

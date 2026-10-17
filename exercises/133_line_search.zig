@@ -50,6 +50,12 @@ fn descend(start: [2]f64, steps: usize, fixed_lr: ?f64) f64 {
     return f(x);
 }
 
+test "halving until the step is good enough" {
+    // from (1, 1) the gradient is (20, 1): t = 1, 1/2, ... 1/16 all
+    // overshoot the narrow direction, and 1/32 is the first that passes
+    try std.testing.expectEqual(1.0 / 32.0, backtrack(.{ 1, 1 }, grad(.{ 1, 1 }), 0.5));
+}
+
 test "no learning rate to tune" {
     try std.testing.expect(descend(.{ 1, 1 }, 200, null) < 1e-6);
 }

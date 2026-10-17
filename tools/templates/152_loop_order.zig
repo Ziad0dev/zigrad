@@ -55,6 +55,18 @@ fn ikj(c: *Cache) void {
     }
 }
 
+test "same memory, different order" {
+    // A cache big enough for all three matrices: every line misses exactly
+    // once, in either order, as long as both touch the same memory.
+    var a: Cache = .{ .slots = 256 };
+    var b: Cache = .{ .slots = 256 };
+    ijk(&a);
+    ikj(&b);
+    try std.testing.expectEqual(3 * n * n * 4 / 64, a.misses);
+    try std.testing.expectEqual(a.misses, b.misses);
+    try std.testing.expectEqual(a.hits + a.misses, b.hits + b.misses);
+}
+
 test "ikj streams, ijk strides" {
     // 2 KB of cache: smaller than even one 4 KB matrix, like a real L1
     // cache next to real-sized matrices

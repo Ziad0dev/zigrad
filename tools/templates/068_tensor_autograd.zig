@@ -110,3 +110,14 @@ test "gradient check of a two-layer network" {
         }
     }
 }
+
+test "relu at exactly 0 passes no gradient" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const e: Engine = .{ .alloc = arena.allocator() };
+
+    // relu has no slope at 0; PyTorch and tinygrad both pick 0
+    const x = e.tensor(1, 3, &.{ -1, 0, 2 });
+    e.backward(e.sum(e.relu(x)));
+    try std.testing.expectEqualSlices(f64, &.{ 0, 0, 1 }, x.grad);
+}

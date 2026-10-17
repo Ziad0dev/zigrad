@@ -16,6 +16,9 @@
 //
 //   training:  use this batch's statistics, and update running averages
 //                  running = (1 - momentum) * running + momentum * batch_stat
+//              (PyTorch and tinygrad feed the running variance the batch
+//              variance times B / (B - 1), the "unbiased" estimate. We
+//              skip that detail here.)
 //   eval:      use the running averages, so each output depends only on
 //              its own input
 //

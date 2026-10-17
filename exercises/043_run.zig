@@ -9,7 +9,9 @@
 //
 // Reduce kernels need one more idea. A sum kernel doesn't store a value
 // per i. It keeps a running total, an *accumulator*, and writes it once
-// at the end. (tinygrad's instruction list has a special op to declare one.)
+// at the end. (tinygrad lowers every REDUCE to exactly this: it allocates
+// a register for the accumulator, stores the reduce's identity into it,
+// and updates it inside the loop.)
 //
 //     acc = 0
 //     for i:  run the instructions;  acc += (the last value)

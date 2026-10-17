@@ -50,6 +50,12 @@ const Cache = struct {
     }
 };
 
+test "which slot, which tag" {
+    var c: Cache = .{ .slots = 64 };
+    c.access(70 * 64 + 5); // byte 5 of line 70: slot 70 % 64 = 6, tag 70 / 64 = 1
+    try std.testing.expectEqual(@as(?usize, 1), c.tags[6]);
+}
+
 test "streaming: one miss per line" {
     var c: Cache = .{ .slots = 64 }; // 4 KB
     for (0..4096) |i| c.access(i * 4); // 4096 floats in a row

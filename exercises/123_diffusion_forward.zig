@@ -43,6 +43,12 @@ fn noisy(x0: f64, abar: f64, eps: f64) f64 {
     return ???;
 }
 
+test "one-shot noising, exactly" {
+    // sqrt(0.36) * 1 + sqrt(0.64) * 1
+    try std.testing.expectApproxEqAbs(1.4, noisy(1, 0.36, 1), 1e-12);
+    try std.testing.expectApproxEqAbs(0.6 * 2 - 0.8 * 0.5, noisy(2, 0.36, -0.5), 1e-12);
+}
+
 test "the signal fades to nothing" {
     var ab: [steps]f64 = undefined;
     alphaBar(&ab);

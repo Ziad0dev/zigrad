@@ -37,6 +37,11 @@ fn sample(mu: f64, sigma: f64, eps: f64) f64 {
     return mu + sigma * eps;
 }
 
+test "the sample is mu + sigma * eps" {
+    try std.testing.expectApproxEqAbs(2.0, sample(1, 2, 0.5), 1e-12);
+    try std.testing.expectApproxEqAbs(-0.5, sample(1, 0.5, -3), 1e-12);
+}
+
 test "KL is 0 exactly at the standard normal" {
     try std.testing.expectApproxEqAbs(0.0, klToStandard(0, 1), 1e-12);
     try std.testing.expect(klToStandard(1, 1) > 0);

@@ -20,6 +20,10 @@
 //     the whole gradient goes to the position of the max, and the others
 //     get 0. Forward remembers where each max was.
 //
+// (Ties are a judgment call: max has no slope where two inputs are equal.
+// PyTorch's max pool gives the whole gradient to one of them, tinygrad's
+// max splits it evenly between them. Both are valid choices.)
+//
 // YOUR TASK: finish both forward passes and both backward passes.
 //
 const std = @import("std");

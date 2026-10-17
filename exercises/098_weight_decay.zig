@@ -71,6 +71,13 @@ test "Adam + L2 decays at full speed, whatever λ is" {
     try std.testing.expect(@abs(w) < 0.15); // wiped out, by a "tiny" penalty
 }
 
+test "Adam turns a tiny penalty into a full-size step" {
+    var o: Adam = .{ .lr = 0.1, .wd = 0.01 };
+    var w: f64 = -0.005; // the penalty's gradient, λ w, is just -0.00005
+    o.stepL2(&w, 0);
+    try std.testing.expectApproxEqAbs(0.095, w, 1e-4); // moved by lr = 0.1, right past 0
+}
+
 test "with SGD they'd be the same" {
     const lr = 0.1;
     const wd = 0.01;

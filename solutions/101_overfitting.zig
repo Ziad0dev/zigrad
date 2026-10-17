@@ -104,6 +104,11 @@ fn mse(w: []const f64, xs: []const f64, ys: []const f64) f64 {
 const train_noise = [_]f64{ 0.15, -0.2, 0.1, -0.05, 0.2, -0.15, 0.05, 0.18, -0.1, 0.12 };
 const val_noise = [_]f64{ -0.1, 0.05, 0.12, -0.08, 0.02, -0.15, 0.1, -0.03, 0.07 };
 
+test "mse is the MEAN squared error" {
+    // the line y = x, on the points (1, 2) and (2, 2): errors -1 and 0
+    try std.testing.expectApproxEqAbs(0.5, mse(&.{ 0, 1 }, &.{ 1, 2 }, &.{ 2, 2 }), 1e-12);
+}
+
 test "memorizing vs learning" {
     var tx: [10]f64 = undefined;
     var ty: [10]f64 = undefined;

@@ -85,4 +85,6 @@ test "fusion is a speedup for a memory-bound kernel" {
     const unfused = kernelTime(3 * n, 32 * n, gpu_peak, gpu_bw);
     const fused = kernelTime(3 * n, 16 * n, gpu_peak, gpu_bw);
     try std.testing.expectApproxEqAbs(2.0, unfused / fused, 1e-12);
+    // 16 MB at 1 TB/s: 16 microseconds, however fast the math units are
+    try std.testing.expectApproxEqAbs(16e-6, fused, 1e-12);
 }

@@ -70,6 +70,12 @@ test "confident vs uncertain" {
     try std.testing.expectEqual(9, try topP(std.testing.allocator, &torn, 0.85));
 }
 
+test "reaching p exactly is enough" {
+    var probs = [_]f64{ 0.25, 0.5, 0.25 };
+    // 0.5 + 0.25 = 0.75 exactly: two tokens, not three
+    try std.testing.expectEqual(2, try topP(std.testing.allocator, &probs, 0.75));
+}
+
 test "p = 1 keeps everything" {
     var probs = [_]f64{ 0.25, 0.25, 0.25, 0.25 };
     try std.testing.expectEqual(4, try topP(std.testing.allocator, &probs, 1));

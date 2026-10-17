@@ -46,6 +46,15 @@ fn meanError(x: []const f32, group: usize) f32 {
     return err;
 }
 
+test "scales and codes, exactly" {
+    var q: [6]i8 = undefined;
+    var s: [2]f32 = undefined;
+    quantize(&.{ 1.4, -0.6, 0.2, 0, 0, 0 }, 3, &q, &s);
+    try std.testing.expectApproxEqAbs(0.2, s[0], 1e-6); // the biggest, 1.4, maps to 7
+    try std.testing.expectEqual(1, s[1]); //               all zeros: any scale works
+    try std.testing.expectEqualSlices(i8, &.{ 7, -3, 1, 0, 0, 0 }, &q);
+}
+
 test "an outlier ruins one scale, but only one group" {
     var x: [128]f32 = undefined;
     for (&x, 0..) |*v, i| v.* = @sin(@as(f32, @floatFromInt(i))) * 0.1;

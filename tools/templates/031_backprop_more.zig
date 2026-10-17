@@ -149,6 +149,7 @@ test "gradients match measured slopes" {
     try gradCheck(0.5, -1.2); // relu active
     try gradCheck(2.0, 0.3); //  relu active
     try gradCheck(-1.0, 0.5); // relu off: x - y < 0
+    try gradCheck(0.5, 0.2); //  relu barely on: x - y = 0.3
 }
 
 test "relu passes grad only when on" {
@@ -158,7 +159,10 @@ test "relu passes grad only when on" {
 
     const on = e.leaf(2);
     const off = e.leaf(-2);
-    e.backward(e.add(e.relu(on), e.relu(off)));
+    const zero = e.leaf(0);
+    e.backward(e.add(e.add(e.relu(on), e.relu(off)), e.relu(zero)));
     try std.testing.expectEqual(1, on.grad);
     try std.testing.expectEqual(0, off.grad);
+    // relu has no slope at exactly 0; PyTorch and tinygrad both pick 0
+    try std.testing.expectEqual(0, zero.grad);
 }

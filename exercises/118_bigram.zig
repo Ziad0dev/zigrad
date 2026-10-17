@@ -78,6 +78,20 @@ test "counting" {
     try std.testing.expectEqual(0, m.counts[id('q')][id('z')]);
 }
 
+test "counting, exactly" {
+    const m = Bigram.train("emma.");
+    try std.testing.expectEqual(1, m.counts[id('.')][id('e')]);
+    try std.testing.expectEqual(1, m.counts[id('m')][id('m')]);
+    try std.testing.expectEqual(1, m.counts[id('a')][id('.')]);
+    try std.testing.expectEqual(0, m.counts[id('e')][id('e')]);
+}
+
+test "nll is the average of -log p" {
+    const m = Bigram.train(corpus);
+    const want = -(@log(m.prob(id('.'), id('a'))) + @log(m.prob(id('a'), id('b'))) + @log(m.prob(id('b'), id('.')))) / 3;
+    try std.testing.expectApproxEqAbs(want, m.nll("ab."), 1e-12);
+}
+
 test "probabilities sum to 1" {
     const m = Bigram.train(corpus);
     for (0..vocab) |a| {

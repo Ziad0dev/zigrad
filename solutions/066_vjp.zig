@@ -117,6 +117,10 @@ test "relu" {
     vtj(&v, &jac, 3, &slow);
     reluVjp(&point, &v, &fast);
     try expectClose(&slow, &fast);
+
+    // relu has no slope at exactly 0; PyTorch and tinygrad both pick 0
+    reluVjp(&.{0}, &.{1}, fast[0..1]);
+    try std.testing.expectEqual(0, fast[0]);
 }
 
 test "matrix times vector" {

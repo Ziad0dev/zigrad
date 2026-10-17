@@ -18,8 +18,9 @@
 //
 // The rule: sum over every dimension that was broadcast, whether it was
 // added in front or stretched from size 1. That brings the grad back to
-// the input's shape. The gradient of expand is a sum (and the gradient of
-// a sum is an expand, as the intro lesson showed).
+// the input's shape. The gradient of expand is a sum. (And the gradient
+// of a sum is an expand: every input of a sum moves it equally, so each
+// one gets the sum's grad unchanged.)
 //
 // YOUR TASK: finish unbroadcast(). For each grad element, work out which
 // element of the original tensor it's a copy of, and add it there.

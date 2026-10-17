@@ -99,6 +99,8 @@ test "the easy ones" {
     try std.testing.expectEqual(4, relu(4));
     try std.testing.expectEqual(3, abs(-3));
     try std.testing.expectEqual(3, abs(3));
+    try std.testing.expectEqual(0.5, abs(-0.5));
+    try std.testing.expectEqual(0.5, abs(0.5));
 }
 
 test "sigmoid and tanh" {

@@ -70,6 +70,14 @@ test "no mean is subtracted: a constant row stays constant" {
     for (y) |v| try std.testing.expectApproxEqAbs(1.0, v, 1e-6);
 }
 
+test "all zeros: this is what ε is for" {
+    const x = [_]f64{ 0, 0, 0 };
+    const g = [_]f64{ 1, 1, 1 };
+    var y: [3]f64 = undefined;
+    forward(&x, &g, &y);
+    for (y) |v| try std.testing.expectEqual(0, v); // not nan
+}
+
 test "dx matches measured slopes" {
     var x = [_]f64{ 0.5, -1.2, 2.0, 0.3 };
     const g = [_]f64{ 1.5, 0.7, -0.4, 1.1 };

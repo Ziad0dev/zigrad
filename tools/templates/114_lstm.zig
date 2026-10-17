@@ -55,6 +55,14 @@ const Lstm = struct {
     }
 };
 
+test "one step by hand" {
+    // all biases 0: f = i = σ(0) = 0.5, g = tanh(x), o = σ(2)
+    const l: Lstm = .{ .f_bias = 0, .i_bias = 0, .i_weight = 0 };
+    const r = l.step(1, 1);
+    try std.testing.expectApproxEqAbs(0.5 * 1 + 0.5 * std.math.tanh(@as(f64, 1)), r[0], 1e-12);
+    try std.testing.expectApproxEqAbs(sigmoid(2) * std.math.tanh(r[0]), r[1], 1e-12);
+}
+
 test "store a value, remember it for 100 steps" {
     // forget gate wide open; the input gate only opens for big inputs
     const l: Lstm = .{ .f_bias = 20, .i_bias = -10, .i_weight = 10 };

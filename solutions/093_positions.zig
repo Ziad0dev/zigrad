@@ -27,6 +27,11 @@
 //    angle between them (054). The attention score only sees RELATIVE
 //    position, exactly what language needs.
 //
+//    (Some implementations, like Hugging Face's, pair dimension i with
+//    i + d/2 instead of 2i with 2i+1: the same idea, with the dimensions
+//    in a different order. Mixing the two up when loading someone else's
+//    weights is a classic bug.)
+//
 // YOUR TASK: write the frequency, the sinusoid, and the rotation.
 //
 const std = @import("std");

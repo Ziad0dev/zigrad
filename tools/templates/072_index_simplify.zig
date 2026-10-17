@@ -194,6 +194,22 @@ test "split an index apart" {
     const flat = g.add(g.mul(a, g.c(4)), b); // a * 4 + b
     try check(&g, "a", g.idiv(flat, g.c(4)), &.{ a, b });
     try check(&g, "b", g.mod(flat, g.c(4)), &.{ a, b });
+    // the same, with the multiple on the right: b + a * 4
+    const flipped = g.add(b, g.mul(a, g.c(4)));
+    try check(&g, "a", g.idiv(flipped, g.c(4)), &.{ a, b });
+    try check(&g, "b", g.mod(flipped, g.c(4)), &.{ a, b });
+}
+
+test "only glue a number back to ITSELF" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    var g: Graph = .init(arena.allocator());
+    const x = g.variable("x", 0, 5);
+    const y = g.variable("y", 0, 5);
+    // a different number's quotient
+    try check(&g, "(((y // 3) * 3) + (x % 3))", g.add(g.mul(g.idiv(y, g.c(3)), g.c(3)), g.mod(x, g.c(3))), &.{ x, y });
+    // a different divisor
+    try check(&g, "(((x // 2) * 3) + (x % 3))", g.add(g.mul(g.idiv(x, g.c(2)), g.c(3)), g.mod(x, g.c(3))), &.{x});
 }
 
 test "ranges make things vanish" {

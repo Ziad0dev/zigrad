@@ -54,6 +54,13 @@ fn decode(code: f64, v: Pt) Pt {
     return ???;
 }
 
+test "covariance" {
+    // mean 0 already: (1, 2) and (-1, -2)
+    var cov: [2][2]f64 = undefined;
+    covariance(&.{ .{ 1, 2 }, .{ -1, -2 } }, &cov);
+    try std.testing.expectEqual([2][2]f64{ .{ 1, 2 }, .{ 2, 4 } }, cov);
+}
+
 test "points along a line compress to one number each" {
     // points spread along the direction (3, 4)/5, with a little noise across it
     var pts: [100]Pt = undefined;

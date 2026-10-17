@@ -47,6 +47,13 @@ fn decide(chip: Chip, n: f64, flops: f64, consumers: f64, forced_contiguous: boo
     return if (⟪recomputeTime(chip, n, flops, consumers) <= storeTime(chip, n, flops, consumers)|||???⟫) .recompute else .store;
 }
 
+test "the two costs" {
+    // 1M elements, 2 flops each, 2 consumers: 4M flops at 100 TFLOP/s
+    try std.testing.expectApproxEqRel(4e-8, recomputeTime(gpu, 1e6, 2, 2), 1e-9);
+    // half the flops, plus 4 MB written and 2 * 4 MB read at 1 TB/s
+    try std.testing.expectApproxEqRel(2e-8 + 12e-6, storeTime(gpu, 1e6, 2, 2), 1e-9);
+}
+
 test "cheap math: recompute" {
     try std.testing.expectEqual(.recompute, decide(gpu, 1e6, 2, 2, false));
 }

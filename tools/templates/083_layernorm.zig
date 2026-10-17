@@ -116,6 +116,18 @@ test "rows come out with mean 0, variance 1" {
     }
 }
 
+test "a constant row: this is what ε is for" {
+    var gamma = [_]f64{ 1, 1, 1, 1 };
+    var beta = [_]f64{ 0, 0, 0, 0 };
+    const l: LayerNorm = .{ .n = 4, .gamma = &gamma, .beta = &beta };
+    const x = [_]f64{ 3, 3, 3, 3 }; // variance 0
+    var y: [4]f64 = undefined;
+    var xhat: [4]f64 = undefined;
+    var inv: [1]f64 = undefined;
+    l.forward(&x, 1, &y, &xhat, &inv);
+    for (y) |v| try std.testing.expectEqual(0, v); // not nan
+}
+
 test "LayerNorm gradients" {
     var gamma = [_]f64{ 1.5, -0.5, 2, 0.7 };
     var beta = [_]f64{ 0.1, 0.2, -0.3, 0 };

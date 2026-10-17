@@ -10,14 +10,15 @@
 // Summing within a block uses the tree from 047, in shared memory:
 //
 //     every thread:          sh[tid] = x[gid]
+//     BARRIER
 //     for stride = bs/2, bs/4, ..., 1:
 //         if tid < stride:   sh[tid] += sh[tid + stride]
 //         BARRIER
 //     thread 0 writes sh[0], the block's partial sum
 //
-// The BARRIER is essential. Threads don't run in perfect lockstep, so
-// without it thread 0 might read sh[stride] before the thread that owns it
-// has finished writing its value from the previous step. A barrier means
+// The BARRIERs are essential. Threads don't run in perfect lockstep, so
+// without them thread 0 might read sh[stride] before the thread that owns
+// it has finished writing it, in the load or in the previous step. A barrier means
 // "nobody continues until everyone has arrived here".
 //
 // The simulation below runs each "phase" (the code between barriers) for

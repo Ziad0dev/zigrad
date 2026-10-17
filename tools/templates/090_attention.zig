@@ -79,6 +79,17 @@ test "equal scores average the values" {
     try std.testing.expectApproxEqAbs(4.0, out[0], 1e-12);
 }
 
+test "scores are divided by sqrt(d)" {
+    // d = 4: token 0's raw scores are 1 and 0, so the scaled ones are 1/2 and 0
+    const q = [_]f64{ 1, 1, 1, 1, 0, 0, 0, 0 };
+    const k = [_]f64{ 1, 0, 0, 0, 0, 0, 0, 0 };
+    const v = [_]f64{ 1, 0 };
+    var out: [2]f64 = undefined;
+    attention(&q, &k, &v, 2, 4, 1, &out);
+    // softmax([1/2, 0])[0] = e^(1/2) / (e^(1/2) + 1)
+    try std.testing.expectApproxEqAbs(1.0 / (1.0 + @exp(-0.5)), out[0], 1e-12);
+}
+
 test "why sqrt(d): dot products of random vectors have variance d" {
     var prng = std.Random.DefaultPrng.init(90);
     const d = 256;

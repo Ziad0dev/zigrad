@@ -87,6 +87,20 @@ test "batches cover every example once" {
     try std.testing.expectEqual([2]usize{ 8, 10 }, batchRange(10, 4, 2));
 }
 
+test "pixel statistics" {
+    // two images: every pixel 1, then every pixel 3. Mean 2, deviation 1.
+    var xs: [2 * pixels]f64 = undefined;
+    @memset(xs[0..pixels], 1);
+    @memset(xs[pixels..], 3);
+    var mean: [pixels]f64 = undefined;
+    var sd: [pixels]f64 = undefined;
+    pixelStats(&xs, 2, &mean, &sd);
+    for (mean, sd) |m, s| {
+        try std.testing.expectApproxEqAbs(2.0, m, 1e-12);
+        try std.testing.expectApproxEqAbs(1.0, s, 1e-12);
+    }
+}
+
 test "normalized pixels have mean 0 and deviation 1" {
     var prng = std.Random.DefaultPrng.init(7);
     const n = 500;

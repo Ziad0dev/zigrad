@@ -146,3 +146,18 @@ test "im2col matches the obvious loops" {
     naiveConv(c, &weight, &x, 5, 6, &slow);
     try std.testing.expectEqualSlices(f64, &slow, &fast);
 }
+
+test "same padding: windows hang off every edge" {
+    const c: Conv2d = .{ .cin = 1, .cout = 2, .k = 3, .pad = 1 };
+    var x: [4 * 5]f64 = undefined;
+    for (&x, 0..) |*v, i| v.* = @as(f64, @floatFromInt(i % 6)) - 2;
+    var weight: [2 * 9]f64 = undefined;
+    for (&weight, 0..) |*v, i| v.* = @as(f64, @floatFromInt(i % 5)) - 1;
+
+    var cols: [9 * 4 * 5]f64 = undefined;
+    var fast: [2 * 4 * 5]f64 = undefined;
+    var slow: [2 * 4 * 5]f64 = undefined;
+    c.forward(&weight, &x, 4, 5, &cols, &fast);
+    naiveConv(c, &weight, &x, 4, 5, &slow);
+    try std.testing.expectEqualSlices(f64, &slow, &fast);
+}
