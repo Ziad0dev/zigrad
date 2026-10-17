@@ -53,7 +53,7 @@ Stuck? Every exercise has a finished version in `solutions/`. Try for a while fi
 | learn the maths of deep learning | chapters 1–7 (001–039), then 11–13 (054–070) and 16–18 (082–101) |
 | write fast kernels | chapters 1–4 and 8–10 (001–025, 040–053), then 14–15 (071–081), 28–29 (146–155) and 31–32 (161–170) |
 | understand modern LLMs | chapters 1–7 (001–039), 16–17 (082–095), 22 (116–120), 27 (141–145) and 33–34 (171–180) |
-| build an ML compiler (the arc of George Hotz's [Compilers for ML syllabus](https://gist.github.com/geohot/4768597d9dc536446ee2d5de1f29e89d)) | UOps and rewrites: 021–025, 041–042, 071–072, 156; loops and movement ops: 005–014, 040, 073–076; fast CPU code: 044–047, 151–155, 161–163; GPUs: 077–080, 166–170; models and autodiff: 030–035, 068–069, 160, 180; then the [final project](project/README.md) |
+| build an ML compiler (the plan of George Hotz's [Compilers for Machine Learning](https://geohot.github.io/web10411/) course, CMU 10-411) | UOps and rewrites: 021–025, 071–072, 156–158; rendering and memory: 041–043, 052, 159; loops and fusion: 019–020, 040, 076, 081; movement ops and autodiff: 009–014, 030–035, 068–069, 073–074; fast CPU code: 044–048, 095, 151–155, 161–165; GPUs: 077–080, 166–170; real models: 075, 094, 110, 116–117, 171–175, 180; then the [final project](project/README.md), which follows the course week by week |
 | everything | 001 to 180 in order: each part builds on the ones before |
 
 Later exercises point back to the earlier ones they use (for example "softmax (018)"), so if you skip ahead and meet something unfamiliar, the number tells you where it's taught. `zig build -Dn=N` checks a single exercise.
@@ -120,7 +120,7 @@ zig run examples/tinygrad_in_one_file.zig
 
 ## Final project
 
-[`project/`](project/README.md) holds a real mini ML compiler in one Zig file. It turns a lazy tensor graph into fused C kernels, compiles them with `zig cc`, runs them, and benchmarks them. The project is to grow it, milestone by milestone, into a fast compiler that trains models. There's also a list of other project ideas.
+Build your own ML compiler, following George Hotz's [Compilers for Machine Learning](https://geohot.github.io/web10411/) course (CMU 10-411) and its [technical syllabus](https://gist.github.com/geohot/4768597d9dc536446ee2d5de1f29e89d) week by week, from UOps and rewrites to training LLMs on GPUs. [`project/`](project/README.md) has the plan, mapped to the exercises, plus a real mini compiler in one Zig file to start from or learn from. It turns a lazy tensor graph into fused C kernels, compiles them with `zig cc`, runs them, and benchmarks them. It also comes with an oracle and a fuzz test to check your compiler against.
 
 ```sh
 zig test project/minicompiler.zig

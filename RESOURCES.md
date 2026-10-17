@@ -11,6 +11,7 @@ The best books, courses, videos, articles and papers to go with this course, gro
 - [tinygrad-notes](https://mesozoic-egg.github.io/tinygrad-notes/): a long series of community write-ups walking through tinygrad's internals. Many were written for older versions (with ShapeTracker), so check details against the current source. [chapters 8, 14, 15, 30]
 - [teenygrad](https://github.com/tinygrad/teenygrad): a sub-1000-line MNIST trainer sharing most of its code with (an older) tinygrad. A great next read after this course.
 - [george hotz archive](https://www.youtube.com/@geohotarchive/videos): recordings of George Hotz's live-coding streams, many of them building tinygrad. Try ["tinygrad refactoring + new tour"](https://www.youtube.com/watch?v=nyDGXlLp578) (2025), or the original ["a tiny tour through tinygrad"](https://www.youtube.com/watch?v=-MhwhiReY-s) (2022, a much older tinygrad).
+- [10-411: Compilers for Machine Learning (CMU, Spring 2027)](https://geohot.github.io/web10411/): George Hotz's course on building an ML compiler from scratch, from UOps and rewrites to GPUs and training LLMs. Its [technical syllabus](https://gist.github.com/geohot/4768597d9dc536446ee2d5de1f29e89d) specifies the UOps week by week. Both are drafts as of October 2026. The [final project](project/README.md) follows them. [chapters 4, 8, 14, 15, 30]
 - [micrograd](https://github.com/karpathy/micrograd): Karpathy's ~150-line scalar autograd engine, the idea behind exercises 030-031.
 
 ## Zig
