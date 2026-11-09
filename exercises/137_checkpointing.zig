@@ -18,6 +18,9 @@
 // activations instead of 100. (PyTorch offers this as
 // torch.utils.checkpoint. It's also called rematerialization.)
 //
+// Ties happen (6 layers: k = 2 and k = 3 both store 5). Keep the smaller
+// k: the same memory, and shorter segments recompute fewer layers.
+//
 // YOUR TASK: write the memory formula and find the best k.
 //
 const std = @import("std");
@@ -56,6 +59,12 @@ test "the best k is about sqrt(n)" {
     const k = bestK(10_000);
     try std.testing.expect(k >= 95 and k <= 105);
     try std.testing.expect(memory(10_000, k) <= 200); // instead of 10,000
+}
+
+test "on a tie, the smaller k" {
+    try std.testing.expectEqual(memory(6, 2), memory(6, 3));
+    try std.testing.expectEqual(2, bestK(6));
+    try std.testing.expect(forwardEvals(6, 2) < forwardEvals(6, 3)); // 9 < 10
 }
 
 test "the price: less than one extra forward pass" {

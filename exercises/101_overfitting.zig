@@ -136,3 +136,15 @@ test "memorizing vs learning" {
     // a little regularization helps a lot
     try std.testing.expect(mse(&ridge, &vx, &vy) < mse(&wiggly, &vx, &vy) / 3);
 }
+
+test "ridge by hand: the penalty pulls the weights toward zero" {
+    // two points on y = 1 + 2x. Features [1, x], so XᵀX = [[2, 1], [1, 1]] and Xᵀy = [4, 3]
+    var w: [2]f64 = undefined;
+    fit(&.{ 0, 1 }, &.{ 1, 3 }, 1, 0, &w);
+    try std.testing.expectApproxEqAbs(1, w[0], 1e-12);
+    try std.testing.expectApproxEqAbs(2, w[1], 1e-12);
+    // lambda = 1 makes it [[3, 1], [1, 2]] w = [4, 3], so w = [1, 1]: a flatter line
+    fit(&.{ 0, 1 }, &.{ 1, 3 }, 1, 1, &w);
+    try std.testing.expectApproxEqAbs(1, w[0], 1e-12);
+    try std.testing.expectApproxEqAbs(1, w[1], 1e-12);
+}

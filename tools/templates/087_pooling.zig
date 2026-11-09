@@ -22,7 +22,8 @@
 //
 // (Ties are a judgment call: max has no slope where two inputs are equal.
 // PyTorch's max pool gives the whole gradient to one of them, tinygrad's
-// max splits it evenly between them. Both are valid choices.)
+// max splits it evenly between them. Both are valid choices. Ours, like
+// PyTorch's, gives it to the FIRST max in reading order.)
 //
 // YOUR TASK: finish both forward passes and both backward passes.
 //
@@ -95,6 +96,20 @@ test "max pool" {
         0, 0, 4, 0,
         0, 3, 0, 0,
     }, &dx);
+}
+
+test "a tie: the first max takes the whole gradient" {
+    const flat = [_]f64{
+        5, 5,
+        1, 2,
+    };
+    var out: [1]f64 = undefined;
+    var argmax: [1]usize = undefined;
+    maxPool(&flat, 2, 2, &out, &argmax);
+    try std.testing.expectEqual(5, out[0]);
+    var dx: [4]f64 = undefined;
+    maxPoolBackward(&.{1}, &argmax, &dx);
+    try std.testing.expectEqualSlices(f64, &.{ 1, 0, 0, 0 }, &dx);
 }
 
 const AvgCheck = struct {

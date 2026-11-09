@@ -3,12 +3,16 @@ name: check
 on:
   push:
   pull_request:
+  schedule:
+    - cron: "0 4 * * 1" # Mondays: mutation-test every exercise
 
 jobs:
   exercises:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # mutation testing diffs against the base
       - uses: mlugg/setup-zig@v2
         with:
           version: 0.16.0
@@ -26,3 +30,12 @@ jobs:
         run: zig test project/minicompiler.zig
       - name: Formatting
         run: zig fmt --check build.zig examples project
+      - name: Mutation testing, on the templates this change touches
+        if: github.event_name != 'schedule'
+        run: |
+          base="${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}"
+          if ! git cat-file -e "${base}^{commit}" 2>/dev/null; then base=HEAD~1; fi
+          python3 tools/mutate.py --since "$base"
+      - name: Mutation testing, every exercise
+        if: github.event_name == 'schedule'
+        run: python3 tools/mutate.py

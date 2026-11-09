@@ -21,7 +21,8 @@
 //
 // Cheap elementwise math: recompute wins (memory is the bottleneck).
 // Very expensive math, or lots of consumers: store wins. With one
-// consumer, recompute always wins, which is exactly plain fusion.
+// consumer, recompute always wins, which is exactly plain fusion. On a
+// tie, recompute: it's no slower, and it saves the memory.
 //
 // tinygrad's scheduler makes these calls with its own heuristics, and you
 // can force a store with .contiguous() (it's also how you stop a big
@@ -73,6 +74,14 @@ test "one consumer: always fuse" {
     for ([_]f64{ 1, 100, 1e6 }) |flops| {
         try std.testing.expectEqual(.recompute, decide(gpu, 1e6, flops, 1, false));
     }
+}
+
+test "a tie goes to recompute" {
+    // on a chip doing 1 flop and moving 1 byte per second, 2 consumers of 12
+    // flops each cost 24 either way: 2 * 12 = 12 + (4 + 2 * 4)
+    const slow: Chip = .{ .peak = 1, .bw = 1 };
+    try std.testing.expectEqual(recomputeTime(slow, 1, 12, 2), storeTime(slow, 1, 12, 2));
+    try std.testing.expectEqual(.recompute, decide(slow, 1, 12, 2, false));
 }
 
 test ".contiguous() forces a store" {

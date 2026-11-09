@@ -1,0 +1,65 @@
+# Mutants that survive tools/mutate.py because they mean the same thing as
+# the answer. One per line: `exercise | mutated answer`. Anything else that
+# survives is a gap in that exercise's tests.
+#
+# Swapped arguments of something symmetric (@max, dot, a product, ...):
+003_elementwise | @max(0, x)
+012_expand | @max(db, da)
+016_composites | P.max(0, x)
+016_composites | sub(P.mul(2, sigmoid(P.mul(x, 2))), 1)
+048_beam_search | @min(candidates.items.len, width)
+054_vectors | dot(b, a) / (norm(a) * norm(b))
+054_vectors | dot(b, a) / dot(b, b)
+096_losses | @max(0, z) - z * y + @log(1 + @exp(-@abs(z)))
+107_overlap | c + (n - 1) * @max(k, c) + k
+107_overlap | @max(compute_free, copy_done)
+154_bank_conflicts | @max(c, worst)
+165_littles_law | bytesInFlight(latency, bandwidth) / (loads * bytes)
+177_mfu | trainFlops(tokens, params) / (gpus * peak_flops * u)
+#
+# Averaged over a batch, (x + m)(x - m) = x² - m² gives the same variance as
+# (x - m)², since the mean of x is m:
+037_init | (x + mean) * (x - mean)
+037_init | (x - mean) * (x + mean)
+084_batchnorm | (x[r * bn.n + j] + mu) * (x[r * bn.n + j] - mu) / bf
+084_batchnorm | (x[r * bn.n + j] - mu) * (x[r * bn.n + j] + mu) / bf
+102_data_pipeline | (xs[i * pixels + p] + m) * (xs[i * pixels + p] - m)
+102_data_pipeline | (xs[i * pixels + p] - m) * (xs[i * pixels + p] + m)
+#
+# Which accumulator lane a number lands in: the lanes are summed at the end.
+045_upcast | acc[2] += x[i + 1]; acc[2] += x[i + 2]; acc[3] += x[i + 3];
+045_upcast | acc[1] += x[i + 1]; acc[3] += x[i + 2]; acc[3] += x[i + 3];
+045_upcast | acc[1] += x[i + 1]; acc[1] += x[i + 2]; acc[3] += x[i + 3];
+045_upcast | acc[1] += x[i + 1]; acc[2] += x[i + 2]; acc[2] += x[i + 3];
+045_upcast | acc[0] += x[i + 1]; acc[2] += x[i + 2]; acc[3] += x[i + 3];
+045_upcast | acc[1] += x[i];
+#
+# Equal in distribution: z is symmetric, and swapping the seed and the index
+# draws different, equally uniform, numbers:
+060_distributions | mu - sigma * z
+089_dropout | uniform(i, seed) >= p
+#
+# A tie between two random floats, which has probability zero:
+089_dropout | uniform(seed, i) > p
+126_bandits | rand.float(f64) <= a.epsilon
+#
+# Tolerances and epsilons a factor of 10 either way, or a tie at the
+# tolerance itself:
+131_convexity | f((a + b) / 2) >= (f(a) + f(b)) / 2 + 1e-12
+131_convexity | f((a + b) / 2) > (f(a) + f(b)) / 2 + 1e-13
+131_convexity | f((a + b) / 2) > (f(a) + f(b)) / 2 + 1e-11
+132_adagrad_rmsprop | o.lr * g / (@sqrt(o.g2) - 1e-8)
+132_adagrad_rmsprop | o.lr * g / (@sqrt(o.g2) + 1e-9)
+132_adagrad_rmsprop | o.lr * g / (@sqrt(o.g2) + 1e-7)
+#
+# Ties between equal types: rank(a) == rank(b) only when a == b.
+181_weak_dtypes | if (rank(a) > rank(b)) a else b
+#
+# Picking the max of distinct ranks: > and >= only differ for the node itself.
+199_linearize | order.get(u).? >= order.get(ready.items[best]).?
+#
+# BEAM: equal timings never happen, and min() is symmetric.
+200_beam_for_real | best.secs - scored.items[0].secs <= min_progress
+200_beam_for_real | @min(scored.items.len, width)
+# Any load priority between END's -5 and the default 0 gives the same order.
+199_linearize | -2
