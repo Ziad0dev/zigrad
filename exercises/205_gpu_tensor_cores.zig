@@ -16,9 +16,11 @@
 // registers, laid out exactly as the PTX manual says. With lane = thread
 // id in the warp, g = lane / 4 and q = lane % 4:
 //
-//     A: 4 registers, each two f16s side by side (low half first).
-//        register r holds row g + 8 * (r & 1), columns 2q + 8 * (r >> 1),
-//        and the column after it.
+//     A: 4 registers, each two f16s side by side (low half first):
+//          register 0:  row g,      columns 2q     and 2q + 1
+//          register 1:  row g + 8,  columns 2q     and 2q + 1
+//          register 2:  row g,      columns 2q + 8 and 2q + 9
+//          register 3:  row g + 8,  columns 2q + 8 and 2q + 9
 //     B: 2 registers. register r holds column g, rows 2q + 8r and the row
 //        after it.
 //     C, D: 4 floats. c0, c1: row g, columns 2q, 2q+1. c2, c3: row g + 8.
@@ -30,14 +32,16 @@
 // The inputs are f16 (049): half the bytes, and tensor cores multiply them
 // exactly, then add in f32.
 //
-// YOUR TASK: which element register r of A holds, and the loop of mma's
-// that walks k.
+// YOUR TASK: which element register r of A holds, as a formula in g, q
+// and r, and the loop of mma's that walks k.
 //
 const std = @import("std");
 
 /// Register r of a warp's A fragment: its row and (first) column. (g, q, r are ints in C.)
 const a_row = ???;
 const a_col = ???;
+/// The body of mma_gemm's k loop: one more 16-deep slice of A and B into acc.
+const walk_k = ???;
 
 const kernels =
     \\#define MMA(d, a, b, c) asm volatile("mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 " \
@@ -90,9 +94,6 @@ const kernels =
     \\  store(C, acc, N, m0, n0);
     \\}
 ;
-
-/// The body of the k loop: one more 16-deep slice of A and B into acc.
-const walk_k = ???;
 
 const t = std.testing;
 
@@ -205,6 +206,7 @@ const Cuda = struct {
     cuCtxSynchronize: *const fn () callconv(.c) CUresult,
     cuEventCreate: *const fn (*?*anyopaque, c_uint) callconv(.c) CUresult,
     cuEventRecord: *const fn (?*anyopaque, ?*anyopaque) callconv(.c) CUresult,
+    cuEventDestroy_v2: *const fn (?*anyopaque) callconv(.c) CUresult,
     cuEventSynchronize: *const fn (?*anyopaque) callconv(.c) CUresult,
     cuEventElapsedTime: *const fn (*f32, ?*anyopaque, ?*anyopaque) callconv(.c) CUresult,
     cuGetErrorString: *const fn (CUresult, *[*:0]const u8) callconv(.c) CUresult,
@@ -305,7 +307,9 @@ const Gpu = struct {
         var start: ?*anyopaque = null;
         var stop: ?*anyopaque = null;
         try gpu.cu.check(gpu.cu.cuEventCreate(&start, 0));
+        defer _ = gpu.cu.cuEventDestroy_v2(start);
         try gpu.cu.check(gpu.cu.cuEventCreate(&stop, 0));
+        defer _ = gpu.cu.cuEventDestroy_v2(stop);
         var best: f64 = std.math.inf(f64);
         try gpu.launch(f, grid, block, shared_bytes, args); // warm up (176)
         for (0..runs) |_| {

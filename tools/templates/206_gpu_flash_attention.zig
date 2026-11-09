@@ -38,7 +38,9 @@
 // exp is EXP2 underneath, like tinygrad's: exp(x) = exp2(x * log2(e))
 // (015), and exp2 is one hardware instruction (ex2.approx in PTX).
 //
-// YOUR TASK: the online update, as C: scale, l and acc.
+// YOUR TASK: the online update (scale, l and acc), twice: in Zig, in
+// onlineStep(), where a test checks it on the CPU, and then as C for the
+// GPU kernel.
 //
 const std = @import("std");
 
@@ -50,7 +52,6 @@ const online_l = ⟪"l = l * scale + p;"|||???⟫;
 const online_acc = ⟪"acc0 = acc0 * scale + p * Vs[j][lane]; acc1 = acc1 * scale + p * Vs[j][lane + 32];"|||???⟫;
 
 const D = 64; // the head dimension
-const TILE = 64;
 
 const kernels =
     \\#define D 64
@@ -124,15 +125,15 @@ const kernels =
     \\}
 ;
 
-/// The same online update on the CPU, one score at a time.
+/// The online update on the CPU, one score at a time: the state a warp carries.
 const Online = struct { m: f32 = -std.math.inf(f32), l: f32 = 0, acc: [2]f32 = .{ 0, 0 } };
 
 fn onlineStep(st: *Online, s: f32, v: [2]f32) void {
     const m_new = @max(st.m, s);
-    const scale = @exp(st.m - m_new);
+    const scale = ⟪@exp(st.m - m_new)|||???⟫;
     const p = @exp(s - m_new);
-    st.l = st.l * scale + p;
-    for (&st.acc, v) |*a, vc| a.* = a.* * scale + p * vc;
+    st.l = ⟪st.l * scale + p|||???⟫;
+    for (&st.acc, v) |*a, vc| a.* = ⟪a.* * scale + p * vc|||???⟫;
     st.m = m_new;
 }
 

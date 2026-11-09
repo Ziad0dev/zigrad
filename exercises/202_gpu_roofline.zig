@@ -164,6 +164,7 @@ const Cuda = struct {
     cuCtxSynchronize: *const fn () callconv(.c) CUresult,
     cuEventCreate: *const fn (*?*anyopaque, c_uint) callconv(.c) CUresult,
     cuEventRecord: *const fn (?*anyopaque, ?*anyopaque) callconv(.c) CUresult,
+    cuEventDestroy_v2: *const fn (?*anyopaque) callconv(.c) CUresult,
     cuEventSynchronize: *const fn (?*anyopaque) callconv(.c) CUresult,
     cuEventElapsedTime: *const fn (*f32, ?*anyopaque, ?*anyopaque) callconv(.c) CUresult,
     cuGetErrorString: *const fn (CUresult, *[*:0]const u8) callconv(.c) CUresult,
@@ -264,7 +265,9 @@ const Gpu = struct {
         var start: ?*anyopaque = null;
         var stop: ?*anyopaque = null;
         try gpu.cu.check(gpu.cu.cuEventCreate(&start, 0));
+        defer _ = gpu.cu.cuEventDestroy_v2(start);
         try gpu.cu.check(gpu.cu.cuEventCreate(&stop, 0));
+        defer _ = gpu.cu.cuEventDestroy_v2(stop);
         var best: f64 = std.math.inf(f64);
         try gpu.launch(f, grid, block, shared_bytes, args); // warm up (176)
         for (0..runs) |_| {

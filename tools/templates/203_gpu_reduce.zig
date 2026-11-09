@@ -65,15 +65,19 @@ const kernels =
     \\  for (int i = blockIdx_x * 256 + tid; i < n; i += 256 * 1024) v += x[i];
     \\  sh[tid] = v;
     \\  __syncthreads();
-    \\  for (int s = 128; s >= 32; s >>= 1) {
-    \\    if (tid < s) sh[tid] += sh[tid + s];
+    \\  for (int s = 128; s >= 32; s >>= 1) {   // the same tree, down to one warp
+    \\
+++ tree_step ++
+    \\
     \\    __syncthreads();
     \\  }
     \\  if (tid < 32) {
     \\    v = sh[tid];
     \\    for (int o = 16; o > 0; o >>= 1) {
+    \\
 ++ shuffle_step ++
-    \\ }
+    \\
+    \\    }
     \\    if (tid == 0) atomic_add(out, v);
     \\  }
     \\}

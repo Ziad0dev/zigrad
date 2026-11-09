@@ -157,12 +157,12 @@ const CRender = struct {
             try r.w.print("{s} acc{d}[{d}] = {{", .{ ctype(red.dtype), n, lanes.len });
             for (lanes, 0..) |_, l| {
                 if (l > 0) try r.w.writeAll(", ");
-                try r.expr(r.g.float(identity(op, .f32)));
+                try r.expr(identityConst(r.g, op, red.dtype));
             }
             try r.w.writeAll("};\n");
         } else {
             try r.w.print("{s} acc{d} = ", .{ ctype(red.dtype), n });
-            try r.expr(r.g.float(identity(op, .f32)));
+            try r.expr(identityConst(r.g, op, red.dtype));
             try r.w.writeAll(";\n");
         }
         for (red.src[1..]) |rng| try r.openLoop(rng);
@@ -175,7 +175,7 @@ const CRender = struct {
                 std.fmt.bufPrint(&name_buf, "acc{d}", .{n}) catch unreachable;
             try r.indent();
             switch (op) {
-                .max => try r.w.print("{s} = fmax2({s}, ", .{ name, name }),
+                .max => try r.w.print("{s} = {s}({s}, ", .{ name, if (red.dtype.isFloat()) "fmax2" else "imax2", name }),
                 else => ⟪try r.w.print("{s} = {s} {s} ", .{ name, name, if (op == .add) "+" else "*" })|||???⟫,
             }
             try r.expr(lane);
@@ -356,6 +356,19 @@ test "a column sum, as C" {
         \\}
         \\
     , out.written());
+}
+
+test "an int reduce gets an int accumulator" {
+    var arena = std.heap.ArenaAllocator.init(t.allocator);
+    defer arena.deinit();
+    var g = Graph.init(arena.allocator());
+    const x = g.buffer(0, .i32, 12);
+    const s = try schedule(&g, &.{try g.reduce(try g.reshape(x, &.{ 3, 4 }), .max, 1)});
+    var out: std.Io.Writer.Allocating = .init(g.alloc);
+    try renderC(&g, s.calls[0].src[0], &out.writer);
+    // max starts from the smallest int, not from a float's -inf
+    try t.expect(std.mem.indexOf(u8, out.written(), "int acc0 = -2147483648;") != null);
+    try t.expect(std.mem.indexOf(u8, out.written(), "acc0 = imax2(acc0, p1[((r1 * 4) + r0)]);") != null);
 }
 
 test "softmax, compiled: three kernels that agree with the interpreter" {

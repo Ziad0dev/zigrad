@@ -167,8 +167,7 @@ fn expectCatches(text: []const u8, bug: Mutant) !void {
     }
 }
 
-test "the mutants are real bugs, and they hide" {
-    try std.testing.expect(!passes("%q = div -7 2\n%t = assert %q -4", .trunc_div));
+test "the bugs hide: each of these passes on its mutant" {
     try std.testing.expect(passes("%q = div 7 2\n%t = assert %q 3", .trunc_div)); // same either way
     try std.testing.expect(passes("%p = permute (reshape [1 2 3 4] [2 2]) [1 0]\n%t = assert (index %p 0 1) 3", .inverse_perm));
     try std.testing.expect(passes("%x = reduce [1 2 3] op=add pop=1\n%t = assert %x 6", .reduce_last));

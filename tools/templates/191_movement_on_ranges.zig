@@ -151,7 +151,7 @@ const Mapped = struct { idx: []const *const UOp, valid: *const UOp };
 
 /// a AND b, for bools: that's MUL (183).
 fn and_(g: *Graph, a: *const UOp, b: *const UOp) Error!*const UOp {
-    return g.mul(a, b); // AND, for bools (183)
+    return g.mul(a, b);
 }
 
 fn applyMovement(g: *Graph, u: *const UOp, out: []const *const UOp, valid: *const UOp) Error!Mapped {
@@ -169,7 +169,8 @@ fn applyMovement(g: *Graph, u: *const UOp, out: []const *const UOp, valid: *cons
         },
         .expand => {
             const front = try g.asInts(u.src[1]);
-            in = @constCast(⟪out[front.len..]|||???⟫);
+            // (a copy: `in` is simplified in place below, and `out` is the caller's)
+            in = g.alloc.dupe(*const UOp, ⟪out[front.len..]|||???⟫) catch @panic("out of memory");
         },
         .pad => {
             const offsets = try g.asInts(u.src[1]);

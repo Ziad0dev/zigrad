@@ -373,6 +373,19 @@ fn runUir(it: *Interp, text: []const u8) RunError!void {
 }
 //@end
 
+// The movement ops and REDUCE are the next exercise. Until then these two
+// stand in for them, so this file compiles on its own.
+fn evalMovement(it: *Interp, u: *const UOp, x: Value) RunError!Value {
+    _ = u;
+    _ = x;
+    return it.fail(error.Spec, "movement ops come in 189");
+}
+
+fn evalReduce(it: *Interp, u: *const UOp) RunError!Value {
+    _ = u;
+    return it.fail(error.Spec, "REDUCE comes in 189");
+}
+
 const t = std.testing;
 
 fn expectRuns(text: []const u8) !void {
@@ -506,5 +519,3 @@ test "a call" {
 //@include substitute
 
 //@include uir_parse
-
-//@include interp_movement

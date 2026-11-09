@@ -6,7 +6,7 @@
 // (041, now for real). tinygrad gets there in two steps.
 //
 // 1. A REDUCE becomes memory: an accumulator (tinygrad: pm_reduce_local,
-//    in tinygrad/codegen/late/):
+//    in tinygrad/codegen/__init__.py):
 //
 //        acc  = ALLOC (a register)                        float acc[1];
 //        STORE(acc, identity)          after the outer loops open
@@ -64,7 +64,7 @@ fn lowerReduces(g: *Graph, ast: *const UOp, edges: *std.AutoHashMap(*const UOp, 
         slot += 1;
         // set it up inside whatever loops the reduce itself is inside
         const outer = it.openRanges(red);
-        const init = try g.store(try g.after(acc, outer), g.float(identity(red.arg.reduce.op, red.dtype)));
+        const init = try g.store(try g.after(acc, outer), identityConst(g, red.arg.reduce.op, red.dtype));
         const inside = try g.after(acc, std.mem.concat(g.alloc, *const UOp, &.{ &.{init}, loops }) catch @panic("out of memory"));
         const step = try g.store(inside, try g.alu(red.arg.reduce.op, &.{ try g.load(inside), x }));
         const done = try g.end(step, loops);

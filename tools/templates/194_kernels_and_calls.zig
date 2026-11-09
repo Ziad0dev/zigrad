@@ -141,7 +141,7 @@ fn expectScheduled(g: *Graph, inputs: []const *const UOp, data: []const []const 
     const want = try it.eval(y);
     const s = try schedule(g, &.{y});
     for (s.calls) |c| _ = try it.eval(c);
-    // the output buffer is the last kernel's second argument... or find it:
+    // y's buffer: what its AFTER (193) waits on
     const out_buf = s.lower.filled.get(y).?.src[0];
     const got = it.storage(out_buf);
     try t.expectEqual(want.data.len, got.len);

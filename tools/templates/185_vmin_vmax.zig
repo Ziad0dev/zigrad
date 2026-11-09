@@ -93,7 +93,7 @@ fn bounds(u: *const UOp) [2]f64 {
             if (⟪a[0] >= b[1]|||???⟫) return .{ 0, 0 }; // never true
             return .{ 0, 1 };
         },
-        .cast => return bounds(u.src[0]),
+        .cast => return if (u.dtype == .bool) .{ 0, 1 } else bounds(u.src[0]),
         else => return if (u.dtype == .bool) .{ 0, 1 } else anything,
     }
 }

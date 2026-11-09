@@ -141,7 +141,7 @@ fn expectScheduled(g: *Graph, inputs: []const *const UOp, data: []const []const 
     const want = try it.eval(y);
     const s = try schedule(g, &.{y});
     for (s.calls) |c| _ = try it.eval(c);
-    // the output buffer is the last kernel's second argument... or find it:
+    // y's buffer: what its AFTER (193) waits on
     const out_buf = s.lower.filled.get(y).?.src[0];
     const got = it.storage(out_buf);
     try t.expectEqual(want.data.len, got.len);
@@ -864,7 +864,7 @@ fn bounds(u: *const UOp) [2]f64 {
             if (a[0] >= b[1]) return .{ 0, 0 }; // never true
             return .{ 0, 1 };
         },
-        .cast => return bounds(u.src[0]),
+        .cast => return if (u.dtype == .bool) .{ 0, 1 } else bounds(u.src[0]),
         else => return if (u.dtype == .bool) .{ 0, 1 } else anything,
     }
 }
@@ -1637,9 +1637,20 @@ fn identity(op: Op, dtype: DType) f64 {
     return switch (op) {
         .add => 0,
         .mul => 1,
-        .max => if (dtype == .i32) -2147483648 else -std.math.inf(f64),
+        .max => switch (dtype) {
+            .i32 => -2147483648,
+            .bool => 0,
+            else => -std.math.inf(f64),
+        },
         else => unreachable,
     };
+}
+
+/// The same, as a literal of the dtype a buffer of `dtype` would have (181).
+fn identityConst(g: *Graph, op: Op, dtype: DType) *const UOp {
+    const d = commit(dtype);
+    const v = identity(op, d);
+    return if (d.isFloat()) g.float(v) else g.int(@intFromFloat(v));
 }
 
 /// REDUCE: pop leading axes off a tensor, or combine src[0] over the
@@ -1778,7 +1789,7 @@ const Mapped = struct { idx: []const *const UOp, valid: *const UOp };
 
 /// a AND b, for bools: that's MUL (183).
 fn and_(g: *Graph, a: *const UOp, b: *const UOp) Error!*const UOp {
-    return g.mul(a, b); // AND, for bools (183)
+    return g.mul(a, b);
 }
 
 fn applyMovement(g: *Graph, u: *const UOp, out: []const *const UOp, valid: *const UOp) Error!Mapped {
@@ -1796,7 +1807,8 @@ fn applyMovement(g: *Graph, u: *const UOp, out: []const *const UOp, valid: *cons
         },
         .expand => {
             const front = try g.asInts(u.src[1]);
-            in = @constCast(out[front.len..]);
+            // (a copy: `in` is simplified in place below, and `out` is the caller's)
+            in = g.alloc.dupe(*const UOp, out[front.len..]) catch @panic("out of memory");
         },
         .pad => {
             const offsets = try g.asInts(u.src[1]);

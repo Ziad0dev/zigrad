@@ -158,12 +158,12 @@ const CRender = struct {
             try r.w.print("{s} acc{d}[{d}] = {{", .{ ctype(red.dtype), n, lanes.len });
             for (lanes, 0..) |_, l| {
                 if (l > 0) try r.w.writeAll(", ");
-                try r.expr(r.g.float(identity(op, .f32)));
+                try r.expr(identityConst(r.g, op, red.dtype));
             }
             try r.w.writeAll("};\n");
         } else {
             try r.w.print("{s} acc{d} = ", .{ ctype(red.dtype), n });
-            try r.expr(r.g.float(identity(op, .f32)));
+            try r.expr(identityConst(r.g, op, red.dtype));
             try r.w.writeAll(";\n");
         }
         for (red.src[1..]) |rng| try r.openLoop(rng);
@@ -176,7 +176,7 @@ const CRender = struct {
                 std.fmt.bufPrint(&name_buf, "acc{d}", .{n}) catch unreachable;
             try r.indent();
             switch (op) {
-                .max => try r.w.print("{s} = fmax2({s}, ", .{ name, name }),
+                .max => try r.w.print("{s} = {s}({s}, ", .{ name, if (red.dtype.isFloat()) "fmax2" else "imax2", name }),
                 else => try r.w.print("{s} = {s} {s} ", .{ name, name, if (op == .add) "+" else "*" }),
             }
             try r.expr(lane);
@@ -356,6 +356,19 @@ test "a column sum, as C" {
         \\}
         \\
     , out.written());
+}
+
+test "an int reduce gets an int accumulator" {
+    var arena = std.heap.ArenaAllocator.init(t.allocator);
+    defer arena.deinit();
+    var g = Graph.init(arena.allocator());
+    const x = g.buffer(0, .i32, 12);
+    const s = try schedule(&g, &.{try g.reduce(try g.reshape(x, &.{ 3, 4 }), .max, 1)});
+    var out: std.Io.Writer.Allocating = .init(g.alloc);
+    try renderC(&g, s.calls[0].src[0], &out.writer);
+    // max starts from the smallest int, not from a float's -inf
+    try t.expect(std.mem.indexOf(u8, out.written(), "int acc0 = -2147483648;") != null);
+    try t.expect(std.mem.indexOf(u8, out.written(), "acc0 = imax2(acc0, p1[((r1 * 4) + r0)]);") != null);
 }
 
 test "softmax, compiled: three kernels that agree with the interpreter" {
@@ -1081,7 +1094,7 @@ fn bounds(u: *const UOp) [2]f64 {
             if (a[0] >= b[1]) return .{ 0, 0 }; // never true
             return .{ 0, 1 };
         },
-        .cast => return bounds(u.src[0]),
+        .cast => return if (u.dtype == .bool) .{ 0, 1 } else bounds(u.src[0]),
         else => return if (u.dtype == .bool) .{ 0, 1 } else anything,
     }
 }
@@ -1854,9 +1867,20 @@ fn identity(op: Op, dtype: DType) f64 {
     return switch (op) {
         .add => 0,
         .mul => 1,
-        .max => if (dtype == .i32) -2147483648 else -std.math.inf(f64),
+        .max => switch (dtype) {
+            .i32 => -2147483648,
+            .bool => 0,
+            else => -std.math.inf(f64),
+        },
         else => unreachable,
     };
+}
+
+/// The same, as a literal of the dtype a buffer of `dtype` would have (181).
+fn identityConst(g: *Graph, op: Op, dtype: DType) *const UOp {
+    const d = commit(dtype);
+    const v = identity(op, d);
+    return if (d.isFloat()) g.float(v) else g.int(@intFromFloat(v));
 }
 
 /// REDUCE: pop leading axes off a tensor, or combine src[0] over the
@@ -1995,7 +2019,7 @@ const Mapped = struct { idx: []const *const UOp, valid: *const UOp };
 
 /// a AND b, for bools: that's MUL (183).
 fn and_(g: *Graph, a: *const UOp, b: *const UOp) Error!*const UOp {
-    return g.mul(a, b); // AND, for bools (183)
+    return g.mul(a, b);
 }
 
 fn applyMovement(g: *Graph, u: *const UOp, out: []const *const UOp, valid: *const UOp) Error!Mapped {
@@ -2013,7 +2037,8 @@ fn applyMovement(g: *Graph, u: *const UOp, out: []const *const UOp, valid: *cons
         },
         .expand => {
             const front = try g.asInts(u.src[1]);
-            in = @constCast(out[front.len..]);
+            // (a copy: `in` is simplified in place below, and `out` is the caller's)
+            in = g.alloc.dupe(*const UOp, out[front.len..]) catch @panic("out of memory");
         },
         .pad => {
             const offsets = try g.asInts(u.src[1]);

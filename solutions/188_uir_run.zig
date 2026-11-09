@@ -373,6 +373,19 @@ fn runUir(it: *Interp, text: []const u8) RunError!void {
     }
 }
 
+// The movement ops and REDUCE are the next exercise. Until then these two
+// stand in for them, so this file compiles on its own.
+fn evalMovement(it: *Interp, u: *const UOp, x: Value) RunError!Value {
+    _ = u;
+    _ = x;
+    return it.fail(error.Spec, "movement ops come in 189");
+}
+
+fn evalReduce(it: *Interp, u: *const UOp) RunError!Value {
+    _ = u;
+    return it.fail(error.Spec, "REDUCE comes in 189");
+}
+
 const t = std.testing;
 
 fn expectRuns(text: []const u8) !void {
@@ -1309,106 +1322,4 @@ fn parseLines(g: *Graph, text: []const u8) Error![]const *const UOp {
     var names = Names.init(g.alloc);
     _ = try p.scope(&names, null);
     return p.lines.items;
-}
-
-/// A flat position as an index, for a row-major shape (008).
-fn unravel(pos: usize, shape: []const usize, idx: []usize) void {
-    var rem = pos;
-    var k = shape.len;
-    while (k > 0) {
-        k -= 1;
-        idx[k] = rem % shape[k];
-        rem /= shape[k];
-    }
-}
-
-/// An index as a flat position, for a row-major shape (007).
-fn ravel(idx: []const usize, shape: []const usize) usize {
-    var pos: usize = 0;
-    for (idx, shape) |i, s| pos = pos * s + i;
-    return pos;
-}
-
-fn evalMovement(it: *Interp, u: *const UOp, x: Value) RunError!Value {
-    const g = it.g;
-    const v = it.alloc(u.dtype, u.shape);
-    const idx = g.alloc.alloc(usize, @max(u.shape.len, x.shape.len)) catch @panic("out of memory");
-    switch (u.op) {
-        .reshape => @memcpy(v.data, x.data), // row-major order doesn't move
-        .expand => {
-            // new axes in front: all of x, once per position of the new axes
-            const n = x.data.len;
-            if (n == 0) return v;
-            for (0..v.data.len / n) |rep| {
-                @memcpy(v.data[rep * n .. (rep + 1) * n], x.data);
-            }
-        },
-        .permute => {
-            const perm = try g.asInts(u.src[1]);
-            const in_idx = g.alloc.alloc(usize, perm.len) catch @panic("out of memory");
-            for (v.data, 0..) |*d, pos| {
-                unravel(pos, u.shape, idx[0..u.shape.len]);
-                // output axis i is input axis perm[i]
-                for (perm, 0..) |axis, i| in_idx[axis] = idx[i];
-                d.* = x.data[ravel(in_idx, x.shape)];
-            }
-        },
-        .pad => {
-            const offsets = try g.asInts(u.src[1]);
-            @memset(v.data, 0);
-            for (x.data, 0..) |d, pos| {
-                unravel(pos, x.shape, idx[0..x.shape.len]);
-                for (idx[0..x.shape.len], offsets) |*i, off| i.* += off;
-                v.data[ravel(idx[0..u.shape.len], u.shape)] = d;
-            }
-        },
-        .shrink => {
-            const offsets = try g.asInts(u.src[1]);
-            for (v.data, 0..) |*d, pos| {
-                unravel(pos, u.shape, idx[0..u.shape.len]);
-                for (idx[0..u.shape.len], offsets) |*i, off| i.* += off;
-                d.* = x.data[ravel(idx[0..x.shape.len], x.shape)];
-            }
-        },
-        else => unreachable,
-    }
-    return v;
-}
-
-/// Where a REDUCE starts. (tinygrad: identity_element)
-fn identity(op: Op, dtype: DType) f64 {
-    return switch (op) {
-        .add => 0,
-        .mul => 1,
-        .max => if (dtype == .i32) -2147483648 else -std.math.inf(f64),
-        else => unreachable,
-    };
-}
-
-/// REDUCE: pop leading axes off a tensor, or combine src[0] over the
-/// values of the ranges src[1..] (after rangeify).
-fn evalReduce(it: *Interp, u: *const UOp) RunError!Value {
-    const op = u.arg.reduce.op;
-    const v = it.alloc(u.dtype, u.shape);
-    @memset(v.data, identity(op, u.dtype));
-    if (u.src.len == 1) {
-        const x = try it.eval(u.src[0]);
-        // the leading axes go; what's left is the last v.data.len of each block
-        const kept = v.data.len;
-        for (x.data, 0..) |d, pos| {
-            const j = pos % kept;
-            v.data[j] = execAlu(op, u.dtype, &.{ v.data[j], d });
-        }
-        return v;
-    }
-    const ranges = u.src[1..];
-    const counters = it.g.alloc.alloc(i64, ranges.len) catch @panic("out of memory");
-    if (it.startLoops(ranges, counters)) {
-        while (true) {
-            const x = try it.eval(u.src[0]);
-            for (v.data, x.data) |*acc, d| acc.* = execAlu(op, u.dtype, &.{ acc.*, d });
-            if (!it.step(ranges, counters)) break;
-        }
-    }
-    return v;
 }
