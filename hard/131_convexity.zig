@@ -1,0 +1,84 @@
+// HARD MODE (zig build -Dhard): no blanks to fill in. Every function
+// marked ??? has lost its whole body: write it, from its doc comment,
+// its signature and the tests. The gentler version of this file is in
+// exercises/, and the answer in solutions/.
+//
+// ─── Exercise 131: convex and not ──────────────────────────────────────
+//
+// Chapter 25: optimization theory. When is gradient descent guaranteed to
+// find THE best answer? When the loss is *convex*: bowl-shaped, with no
+// separate valleys. Formally, the straight line between any two points on
+// the graph lies on or above it:
+//
+//     f((a + b) / 2) <= (f(a) + f(b)) / 2        (the midpoint test)
+//
+// For smooth 1D functions it's equivalent to f'' >= 0 everywhere.
+//
+// Convex: x², |x|, e^x, and the squared error of a LINEAR model as a
+// function of its weights. So linear regression (032) always reaches the
+// global best.
+//
+// Not convex: almost every neural network loss. Even y = w1 * w2 * x has
+// two separate valleys of best answers, one with both weights positive
+// and a mirror image with both negative, and the path between them goes
+// UP. That's why deep learning results depend on initialization
+// (037) and randomness, and why it's remarkable they work so well anyway.
+//
+// YOUR TASK: write the midpoint test, and check f'' numerically.
+//
+const std = @import("std");
+
+const F = *const fn (f64) f64;
+
+/// Checks the midpoint inequality on a grid of pairs in [lo, hi].
+fn looksConvex(f: F, lo: f64, hi: f64) bool {
+    ???; // write this function's body
+}
+
+fn secondDerivative(f: F, x: f64) f64 {
+    ???; // write this function's body
+}
+
+fn square(x: f64) f64 {
+    return x * x;
+}
+fn absolute(x: f64) f64 {
+    return @abs(x);
+}
+fn expo(x: f64) f64 {
+    return @exp(x);
+}
+/// Shifting a function up or down can't change its shape.
+fn shifted(x: f64) f64 {
+    return x * x - 10;
+}
+fn sine(x: f64) f64 {
+    return @sin(x);
+}
+/// Squared error of the model y = w * 2 against target 3: linear in w.
+fn linearLoss(w: f64) f64 {
+    return (2 * w - 3) * (2 * w - 3);
+}
+/// y = w1 * w2 with target 1, along the path w1 = w2 = t: loss (t^2 - 1)^2.
+fn twoLayerLoss(t: f64) f64 {
+    return (t * t - 1) * (t * t - 1);
+}
+
+test "convex" {
+    try std.testing.expect(looksConvex(&square, -3, 3));
+    try std.testing.expect(looksConvex(&absolute, -3, 3));
+    try std.testing.expect(looksConvex(&expo, -3, 3));
+    try std.testing.expect(looksConvex(&linearLoss, -5, 5));
+    try std.testing.expect(looksConvex(&shifted, -3, 3)); // negative values are fine
+}
+
+test "not convex" {
+    try std.testing.expect(!looksConvex(&sine, -3, 3));
+    try std.testing.expect(!looksConvex(&twoLayerLoss, -2, 2)); // two valleys, at t = ±1
+    try std.testing.expect(secondDerivative(&twoLayerLoss, 0) < 0); // a hill between them
+}
+
+test "second derivatives" {
+    try std.testing.expectApproxEqAbs(2.0, secondDerivative(&square, 1.7), 1e-4);
+    try std.testing.expectApproxEqAbs(@exp(1.0), secondDerivative(&expo, 1), 1e-4);
+}

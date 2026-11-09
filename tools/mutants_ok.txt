@@ -63,3 +63,15 @@
 200_beam_for_real | @min(scored.items.len, width)
 # Any load priority between END's -5 and the default 0 gives the same order.
 199_linearize | -2
+# Checkpoints. @max is symmetric; node 0 is always an input, so skipping it changes nothing.
+c1_checkpoint_part_one | var biggest = x[0]; for (x) |v| biggest = @max(v, biggest); var total: f32 = 0; for (x, out) |v, *o| { o.* = @exp(v - biggest); total += o.*; } for (out) |*o| o.* /= total;
+c1_checkpoint_part_one | for (nodes) |*n| n.grad = 0; nodes[nodes.len - 1].grad = 1; var i = nodes.len; while (i > 1) { i -= 1; const n = nodes[i]; switch (n.op) { .input => {}, .add => { nodes[n.a].grad += n.grad; nodes[n.b].grad += n.grad; }, .mul => { nodes[n.a].grad += n.grad * nodes[n.b].value; nodes[n.b].grad += n.grad * nodes[n.a].value; }, .relu => { if (nodes[n.a].value > 0) nodes[n.a].grad += n.grad; }, } }
+# The sum of (v - mean)(v + mean) is the sum of v^2 - mean^2: the variance again.
+c2_checkpoint_part_two | const n: f64 = @floatFromInt(x.len); var mean: f64 = 0; for (x) |v| mean += v / n; var variance: f64 = 0; for (x) |v| variance += (v - mean) * (v + mean) / n; const inv_std = 1 / @sqrt(variance + eps); for (x, gamma, beta, y) |v, g, b, *o| o.* = g * (v - mean) * inv_std + b;
+# 17, 8, 4, 2, 1 still reaches every lane (17 = 16 XOR 1); a bigger scratch array is still big enough.
+c4_checkpoint_part_four | var offset: usize = 17; while (offset > 0) : (offset >>= 1) { const old = lanes.*; for (lanes, 0..) |*v, i| v.* += old[i ^ offset]; }
+c4_checkpoint_part_four | var kept = [_]bool{false} ** 65; var total: f64 = 0; var count: usize = 0; while (total < p and count < probs.len) { // the most likely token not kept yet var best: ?usize = null; for (probs, 0..) |v, i| { if (!kept[i] and (best == null or v > probs[best.?])) best = i; } kept[best.?] = true; total += probs[best.?]; count += 1; } for (probs, 0..) |*v, i| v.* = if (kept[i]) v.* / total else 0; return count;
+# Equal dtypes: either side is the answer. A flat index that starts at 1 is off by a multiple of the
+# whole size, which the MOD of every digit removes.
+c5_checkpoint_part_five | if (op == .cmplt or op == .cmpne) return .bool; return if (@intFromEnum(a) > @intFromEnum(b)) a else b;
+c5_checkpoint_part_five | var flat: usize = 1; for (out, out_shape) |i, n| flat = flat * n + i; var k = in_shape.len; while (k > 0) { k -= 1; in[k] = flat % in_shape[k]; flat /= in_shape[k]; }

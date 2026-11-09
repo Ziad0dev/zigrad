@@ -2,7 +2,7 @@
 
 A zero-to-hero course on [tinygrad](https://github.com/tinygrad/tinygrad), on deep learning, and on the maths underneath both, taught by rebuilding it all in Zig one small broken program at a time. The format follows [ziglings](https://codeberg.org/ziglings/exercises).
 
-There are 206 exercises in six parts. Each one teaches a single idea in its comments, then leaves you a hole or a bug to fix. Fix it and the tests at the bottom pass. You don't need any maths beyond school algebra, or any prior Zig: both are introduced as they come up.
+There are 206 exercises in six parts, and five checkpoints between them. Each exercise teaches a single idea in its comments, then leaves you a hole or a bug to fix. Fix it and the tests at the bottom pass. Each checkpoint asks you to write, from memory, functions from all over the part you just finished. You don't need any maths beyond school algebra, or any prior Zig: both are introduced as they come up.
 
 Parts I–IV teach the ideas with small, made-up IRs. Part V rebuilds tinygrad as it is today, with its real UOps, the UIR text format, rangeify and its code generator, the way George Hotz's [10-411](https://10-411.com/) course specifies them. Part VI runs machine learning kernels on a real NVIDIA GPU; without one, its tests compile the kernels and then skip.
 
@@ -40,10 +40,32 @@ Fix the file, run `zig build` again, and repeat. Exercises that already pass are
 | `zig build` | Check all exercises in order |
 | `zig build -Dn=17` | Check only exercise 17 |
 | `zig build -Dsolutions` | Check the reference solutions |
+| `zig build -Dcheckpoint=2` | Check only checkpoint 2 |
+| `zig build -Dhard` | Hard mode: the same course from `hard/`, where you write whole functions instead of filling blanks |
 | `zig build -Dfresh` | Recheck everything, ignoring remembered passes |
 | `zig test exercises/017_reduce_axis.zig` | Run one file's tests directly (`zig test -lc ...` for Part VI, which loads the GPU driver; `zig build` adds it for you) |
 
 Stuck? Every exercise has a finished version in `solutions/`. Try for a while first, though: the struggle is where the learning happens.
+
+## How to get the most out of it
+
+The course has three levels of difficulty, on purpose. Filling a blank in code that is otherwise finished is the best way to *start* on something new: for a beginner, studying a nearly worked example beats solving from scratch. But that advantage disappears, and then reverses, as you get better (the "expertise reversal effect"), so the support has to fade or you stop learning from it.
+
+| Level | Where | What you do |
+|---|---|---|
+| Fill in | `exercises/`, `zig build` | Complete a few expressions in finished code. Start here for anything new to you. |
+| Hard mode | `hard/`, `zig build -Dhard` | Every function that had a blank has lost its whole body. Same tests, same hints. Progress is tracked separately, so you can do both. |
+| Checkpoints | `c1` to `c5`, in the normal run after each part | No blanks and nothing new: five functions from five different chapters, written from memory. |
+
+Some habits that the research on learning supports, and that this format makes easy:
+
+- **Recall before you look.** Trying to pull an answer out of your own head, even when you fail, does more for memory than rereading the explanation. When you're stuck on a checkpoint, read *your own* finished exercise, close it, then write the function.
+- **Come back later.** Redo an exercise in hard mode a few days after you first filled it in, not five minutes after. Forgetting a little first is what makes the second pass work. A good rhythm: fill in a chapter today, do the previous chapter in hard mode tomorrow.
+- **Predict, then run.** Before `zig build`, say what the tests will print or which one will fail. Several exercises ask for this directly ("Predict it!"); do it for the others too, and for every benchmark: guess the GFLOPS before you see them.
+- **Mix it up.** The checkpoints jumble their topics so that you have to work out *which* idea a problem needs. That is harder than a chapter where every exercise uses the idea you just read, and it is the skill you need in a real codebase.
+- **Break it on purpose.** After an exercise passes, change one thing (a `<` to a `<=`, an axis, a stride) and predict which test catches it. `tools/mutate.py` does this to the reference answers; 190 makes a game of it.
+
+These feel slower and harder than rereading. That is the point: the difficulty is what makes it stick. Background: [the worked-example and expertise-reversal effects](https://en.wikipedia.org/wiki/Worked-example_effect), [fading from examples to problems](https://faculty.engineering.asu.edu/mre/wp-content/uploads/sites/31/2020/02/1124_final.pdf), [retrieval, spacing and interleaving as "desirable difficulties"](https://edcog.pnb.mcmaster.ca/?p=1267), and [predicting before running (PRIMM)](https://static.teachcomputing.org/pedagogy/QR11-PRIMM.pdf).
 
 ## Learning paths
 
@@ -58,6 +80,7 @@ Stuck? Every exercise has a finished version in `solutions/`. Try for a while fi
 | understand modern LLMs | chapters 1–7 (001–039), 16–17 (082–095), 22 (116–120), 27 (141–145) and 33–34 (171–180) |
 | build an ML compiler (George Hotz's [Compilers for Machine Learning](https://10-411.com/), CMU 10-411) | chapters 1–8 (001–043) for the ideas, then Part V (181–200) for the real IR, UIR, rangeify and codegen, Part VI (201–206) for GPUs, and the [final project](project/README.md), which maps every week of the course to the exercises |
 | everything | 001 to 206 in order: each part builds on the ones before |
+| the most challenge | `zig build -Dhard` from the start, dropping back to `exercises/` only for a file that defeats you |
 
 Later exercises point back to the earlier ones they use (for example "softmax (018)"), so if you skip ahead and meet something unfamiliar, the number tells you where it's taught. `zig build -Dn=N` checks a single exercise.
 
@@ -156,11 +179,11 @@ Read tinygrad's own source. The names you'll meet there (`UOp`, `graph_rewrite`,
 
 ## Maintaining the exercises
 
-`exercises/` and `solutions/` are generated: don't edit them by hand. Each exercise is one template in `tools/templates/`, where `⟪answer|||hole⟫` marks a hole (or `//⟪` ... `//|||` ... `//⟫` for multi-line ones). Shared code lives in `tools/templates/snippets/` and is pulled in with `//@include name`. A template can also wrap code in `//@export name` ... `//@end`: later exercises `//@include name` its finished version, so an exercise and the exercises built on it can't drift apart (Part V works this way). An exercise that needs extra `zig test` flags says so in a line `// zig test flags: -lc`, which `zig build`, `verify.sh` and `mutate.py` all read.
+`exercises/`, `hard/` and `solutions/` are generated: don't edit them by hand. Each exercise is one template in `tools/templates/`, where `⟪answer|||hole⟫` marks a hole (or `//⟪` ... `//|||` ... `//⟫` for multi-line ones). Shared code lives in `tools/templates/snippets/` and is pulled in with `//@include name`. A template can also wrap code in `//@export name` ... `//@end`: later exercises `//@include name` its finished version, so an exercise and the exercises built on it can't drift apart (Part V works this way). An exercise that needs extra `zig test` flags says so in a line `// zig test flags: -lc`, which `zig build`, `verify.sh` and `mutate.py` all read.
 
 ```sh
-python3 tools/gen.py      # regenerate exercises/ and solutions/
-tools/verify.sh           # every exercise fails, every solution passes and is zig fmt clean
+python3 tools/gen.py      # regenerate exercises/, hard/ and solutions/
+tools/verify.sh           # every exercise fails (both versions), every solution passes and is zig fmt clean
 tools/verify.sh 07        # just exercises 070-079
 python3 tools/check_holes.py   # every compile error points at a ??? hole
 python3 tools/mutate.py 18     # mutation testing: do the tests catch wrong answers?
@@ -170,7 +193,9 @@ python3 tools/mutate.py 18     # mutation testing: do the tests catch wrong answ
 
 GitHub Actions runs all of these on every push (`.github/workflows/check.yml`): mutation testing on the templates a change touches, and on everything once a week. CI has no GPU, so Part VI's tests compile their kernels there and skip the rest.
 
-New exercises also need an entry, with a hint, in `build.zig`.
+`hard/` needs no extra writing: `gen.py` takes each function that contains a hole and replaces its whole body with one hole (functions longer than 40 lines keep their fill-in holes). Checkpoints are ordinary templates named `c1_...`, whose holes are whole function bodies.
+
+New exercises also need an entry, with a hint, in `build.zig`. Two rules the tools can't fully check for you: an exercise must not show its own answer anywhere else in the file (in the header comment, in a test, in a neighbouring function), and it may only `//@include` exports of *earlier* exercises (`gen.py` refuses the other direction, because it would paste a later exercise's answers into this one).
 
 ## License
 

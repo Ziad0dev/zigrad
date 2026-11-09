@@ -1,0 +1,67 @@
+// HARD MODE (zig build -Dhard): no blanks to fill in. Every function
+// marked ??? has lost its whole body: write it, from its doc comment,
+// its signature and the tests. The gentler version of this file is in
+// exercises/, and the answer in solutions/.
+//
+// ─── Exercise 137: activation checkpointing ────────────────────────────
+//
+// Backward needs the forward pass's activations (x̂ in LayerNorm, 083;
+// the inputs of every matmul, 035...). For n layers, that's n stored
+// activations, and for big models activations use more memory than the
+// weights.
+//
+// *Checkpointing* trades compute for memory: store only every k-th
+// activation. During backward, when a segment's activations are needed,
+// recompute them from the nearest checkpoint.
+//
+//     memory:  n / k checkpoints  +  k activations for the segment being
+//              recomputed
+//     compute: about one extra forward pass in total
+//
+// n/k + k is smallest at k = sqrt(n): 100 layers need about 20 stored
+// activations instead of 100. (PyTorch offers this as
+// torch.utils.checkpoint. It's also called rematerialization.)
+//
+// Ties happen (6 layers: k = 2 and k = 3 both store 5). Keep the smaller
+// k: the same memory, and shorter segments recompute fewer layers.
+//
+// YOUR TASK: write the memory formula and find the best k.
+//
+const std = @import("std");
+
+fn memory(n: usize, k: usize) usize {
+    ???; // write this function's body
+}
+
+fn bestK(n: usize) usize {
+    ???; // write this function's body
+}
+
+/// Counts forward-layer evaluations for one checkpointed forward+backward.
+fn forwardEvals(n: usize, k: usize) usize {
+    ???; // write this function's body
+}
+
+test "memory" {
+    try std.testing.expectEqual(101, memory(100, 1)); // store everything (plus 1)
+    try std.testing.expectEqual(20, memory(100, 10));
+}
+
+test "the best k is about sqrt(n)" {
+    try std.testing.expectEqual(10, bestK(100));
+    const k = bestK(10_000);
+    try std.testing.expect(k >= 95 and k <= 105);
+    try std.testing.expect(memory(10_000, k) <= 200); // instead of 10,000
+}
+
+test "on a tie, the smaller k" {
+    try std.testing.expectEqual(memory(6, 2), memory(6, 3));
+    try std.testing.expectEqual(2, bestK(6));
+    try std.testing.expect(forwardEvals(6, 2) < forwardEvals(6, 3)); // 9 < 10
+}
+
+test "the price: less than one extra forward pass" {
+    try std.testing.expect(forwardEvals(100, 10) < 200);
+    try std.testing.expectEqual(190, forwardEvals(100, 10)); // 100, plus 9 per segment
+    try std.testing.expectEqual(17, forwardEvals(10, 4)); //    segments of 4, 4, 2: 10 + 3 + 3 + 1
+}

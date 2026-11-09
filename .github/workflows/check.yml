@@ -19,7 +19,7 @@ jobs:
       - name: Every exercise fails, every solution passes and is zig fmt clean
         run: tools/verify.sh
       - name: Generated files are up to date
-        run: git diff --exit-code exercises solutions
+        run: git diff --exit-code exercises hard solutions
       - name: Every error points at a ??? hole
         run: python3 tools/check_holes.py
       - name: The build runner passes on the solutions

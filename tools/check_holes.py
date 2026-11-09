@@ -80,6 +80,16 @@ def main():
                 if "???" not in line:
                     print(f"BAD  {tpl.name}, {k} holes answered: first error is not on a hole: {line.strip()}")
                     bad += 1
+        # hard mode: the first error must be on a ??? too
+        for tpl in sorted(gen.TPL.glob(prefix + "*.zig")):
+            src = gen.render_raw(gen.harden(gen.expand_includes(tpl.read_text())), False)
+            f = pathlib.Path(tmp) / tpl.name
+            f.write_text(src)
+            r = subprocess.run(["zig", "ast-check", str(f)], capture_output=True, text=True)
+            errs = re.findall(r":(\d+):\d+: error: (.*)", r.stderr)
+            if not errs or "???" not in src.splitlines()[int(errs[0][0]) - 1]:
+                print(f"BAD  {tpl.name}, hard mode: first error is not on a hole")
+                bad += 1
     print("holes ok" if bad == 0 else f"{bad} problems")
     sys.exit(1 if bad else 0)
 
