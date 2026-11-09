@@ -8,6 +8,11 @@ Template syntax:
   block:   a line containing only //⟪  starts the solution part,
            a line //|||  switches to the exercise part,
            a line //⟫  ends it.
+  include: a line //@include name  pastes in shared code: a region some
+           template exported, or else tools/templates/snippets/name.zig.
+  export:  lines //@export name ... //@end  around code (holes allowed)
+           make its finished version includable by later exercises, so
+           an exercise and the code that builds on it can't drift apart.
 """
 import pathlib
 import re
@@ -23,20 +28,51 @@ SOLUTION_BANNER = (
 )
 
 
+_exports: dict[str, str] | None = None
+
+
+def exports() -> dict[str, str]:
+    """Every //@export region of every template, as finished (solution) code."""
+    global _exports
+    if _exports is None:
+        _exports = {}
+        for tpl in sorted(TPL.glob("*.zig")):
+            name, region = None, []
+            for line in tpl.read_text().splitlines(keepends=True):
+                s = line.strip()
+                if s.startswith("//@export "):
+                    name, region = s.split()[1], []
+                    assert not (TPL / "snippets" / f"{name}.zig").exists(), f"{tpl.name}: //@export {name} would hide snippets/{name}.zig"
+                    assert name not in _exports, f"{tpl.name}: //@export {name} is exported twice"
+                elif s == "//@end" and name is not None:
+                    _exports[name] = render_raw(expand_includes("".join(region)), True)
+                    name = None
+                elif name is not None:
+                    region.append(line)
+            assert name is None, f"{tpl.name}: //@export {name} has no //@end"
+    return _exports
+
+
 def expand_includes(text: str) -> str:
     out = []
     for line in text.splitlines(keepends=True):
         s = line.strip()
         if s.startswith("//@include "):
             name = s.split()[1]
-            out.append((TPL / "snippets" / f"{name}.zig").read_text())
+            ex = exports()
+            out.append(ex[name] if name in ex else (TPL / "snippets" / f"{name}.zig").read_text())
+        elif s.startswith("//@export ") or s == "//@end":
+            continue
         else:
             out.append(line)
     return "".join(out)
 
 
 def render(text: str, want_solution: bool) -> str:
-    text = expand_includes(text)
+    return render_raw(expand_includes(text), want_solution)
+
+
+def render_raw(text: str, want_solution: bool) -> str:
     out = []
     mode = None  # None, "sol", "ex"
     for line in text.splitlines(keepends=True):

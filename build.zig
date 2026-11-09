@@ -197,6 +197,32 @@ const exercises = [_]Exercise{
     .{ .file = "178_scaling_laws.zig", .hint = "C = 6 N D and D = 20 N, so C = 120 N^2: N is the square root of C / 120." },
     .{ .file = "179_decode_speed.zig", .hint = "At batch 1 every token reads all the weights: bandwidth / weight bytes. Compute is 2 N B / peak; set it equal to the memory time and solve for B." },
     .{ .file = "180_transformer_block.zig", .hint = "q and k both get RoPE at the token's position (cache.len before appending). Bump cache.len after storing. Residuals add the sublayer's output to its input." },
+    .{ .file = "181_weak_dtypes.zig", .hint = "A bare int is weakint, a bare float weakfloat. On a chain, the least upper bound is whichever type comes later. commit() picks tinygrad's defaults." },
+    .{ .file = "182_uop.zig", .hint = "STACK and EXPAND put new axes in FRONT; INDEX and REDUCE take axes off the front. Output axis i of a PERMUTE is old axis perm[i]. Comparisons always give bool." },
+    .{ .file = "183_alu.zig", .hint = "Zig has @divFloor. Python's % is defined from //: x - (x // y) * y. @truncate keeps the low bits; @floatCast rounds to f32." },
+    .{ .file = "184_call_param.zig", .hint = "Substitute each src, and only make a new UOp if one of them changed. PARAM slot i means argument i of the CALL." },
+    .{ .file = "185_vmin_vmax.zig", .hint = "A RANGE to n runs from 0 to n - 1. A WHERE can be either side. a < b is certain when even a's largest is below b's smallest, and impossible the other way round." },
+    .{ .file = "186_uir_parse.zig", .hint = "After a %name, skip spaces: a = makes it an assignment. A word followed directly by = is a key. ( starts an op, [ a STACK. Args come after srcs." },
+    .{ .file = "187_uir_print.zig", .hint = "Only CONSTs, and STACKs of nothing but CONSTs, are written in place. A float with no '.' or 'e' needs '.0'. pop=0 is the default, so it's left out." },
+    .{ .file = "188_uir_run.zig", .hint = "An index is in bounds when it's in [0, length). A STORE fits each value to the buffer's dtype. AFTER runs its deps first; END runs its body once per step of its loops." },
+    .{ .file = "189_uir_movement.zig", .hint = "EXPAND copies all of x once per position of the new axes. PERMUTE: input axis perm[i] gets output index i. PAD adds the offset to each index; SHRINK reads at index + offset." },
+    .{ .file = "190_tests_due_monday.zig", .hint = "Each bug hides somewhere: division needs a negative number, a permute 3 axes, a reduce a non-square shape, a pad an asymmetric offset, and AFTER a read after a write." },
+    .{ .file = "191_movement_on_ranges.zig", .hint = "Each case is one line of tinygrad's apply_movement_op: add the offset; route through perm; drop the leading ranges; subtract the offset and AND in the check; flatten, then unflatten." },
+    .{ .file = "192_rangeify_walk.zig", .hint = "One consumer: take its ranges. Consumers that disagree: realize, with fresh ranges. A REDUCE's popped axes need fresh ranges in front of out." },
+    .{ .file = "193_rangeify_lower.zig", .hint = "A realized value is read from its buffer with element(). A PAD's valid becomes a WHERE with 0. In kernel(), END the store over its loops, then AFTER the buffer on that END." },
+    .{ .file = "194_kernels_and_calls.zig", .hint = "Keep a buffer made from more than 3 buffers, or one holding a reduce that reads a buffer. Each buffer becomes the next PARAM slot; an AFTER is passed as the argument itself; ranges renumber from 0." },
+    .{ .file = "195_render_and_run.zig", .hint = "An INDEX into a PARAM prints as p<slot>[...]. A WHERE is C's ?:. A reduce line updates its accumulator; END opens one loop per range; a STORE prints its target first." },
+    .{ .file = "196_shift_to.zig", .hint = "A reduce range unrolls up to 32, any other upcasts up to 16. top = false: old * amt + new. top = true: new * (n / amt) + old." },
+    .{ .file = "197_expander.zig", .hint = "atLane() puts each lane's number in place of the range. The old reduce becomes lane u of the vector one: an INDEX. An unrolled reduce combines its lanes with its op, lane by lane." },
+    .{ .file = "198_gpudims.zig", .hint = "Merge dims i and i + 1 if their product fits slot i. Divide the dim by the divisor you found. Every index but the first wraps around its dim." },
+    .{ .file = "199_linearize.zig", .hint = "Loads go early: a negative priority. A key's first part is how many loops the node is inside. Take the ready node LATEST in the ideal order; a node is ready once its last user is placed." },
+    .{ .file = "200_beam_for_real.zig", .hint = "Set the chosen axis's field to the amount. Stop when the best improves by less than min_progress; keep at most `width` candidates." },
+    .{ .file = "201_cuda_driver.zig", .hint = "cuMemcpyHtoD wants a pointer and a byte count. Round the block count up. kernelParams holds a POINTER to each argument, in order." },
+    .{ .file = "202_gpu_roofline.zig", .hint = "Thread i reads element i * stride (as a long: it gets big). A copy reads and writes 4 bytes per element. An FMA is 2 FLOPs. The ridge is FLOPs per second over bytes per second." },
+    .{ .file = "203_gpu_reduce.zig", .hint = "Threads below s add in the value s places above them. The butterfly adds the value from lane XOR o." },
+    .{ .file = "204_gpu_gemm.zig", .hint = "Thread (tx, ty) loads A[row][kt*16 + tx] and B[kt*16 + ty][col]. Sync after loading, and again after computing. acc[r][c] gets a[r] * b[c]." },
+    .{ .file = "205_gpu_tensor_cores.zig", .hint = "Register r's row is g, plus 8 when r is odd; its column is 2q, plus 8 for r = 2 and 3. Each k step is one call of tile()." },
+    .{ .file = "206_gpu_flash_attention.zig", .hint = "The old sums shrink by exp(m - m_new). Then l gets the new weight p, and each acc gets p times its value from V." },
 };
 
 pub fn build(b: *std.Build) void {
@@ -279,8 +305,22 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
             skipped = 0;
         }
 
+        // A few exercises need extra flags for `zig test` (the GPU ones link
+        // libc, to load the driver). They say so in a line of the file:
+        // `// zig test flags: -lc`.
+        var argv: std.ArrayList([]const u8) = .empty;
+        try argv.appendSlice(b.allocator, &.{ b.graph.zig_exe, "test" });
+        const marker = "\n// zig test flags: ";
+        if (std.mem.indexOf(u8, contents, marker)) |at| {
+            const start = at + marker.len;
+            const end = std.mem.indexOfScalarPos(u8, contents, start, '\n') orelse contents.len;
+            var flags = std.mem.tokenizeScalar(u8, contents[start..end], ' ');
+            while (flags.next()) |flag| try argv.append(b.allocator, flag);
+        }
+        try argv.append(b.allocator, b.pathFromRoot(rel));
+
         const result = try std.process.run(b.allocator, b.graph.io, .{
-            .argv = &.{ b.graph.zig_exe, "test", b.pathFromRoot(rel) },
+            .argv = argv.items,
             .cwd = .{ .path = b.pathFromRoot(".") },
             .environ_map = &env,
         });
@@ -309,11 +349,12 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
         p(
             \\
             \\All {d} exercises pass. From flat memory to transformers, from the
-            \\chain rule to tensor cores and warp shuffles: you've built every major
-            \\piece of tinygrad, the maths underneath it, and the hardware under that.
+            \\chain rule to tensor cores and warp shuffles, from UIR through rangeify
+            \\to kernels running on your own GPU: you've built every major piece of
+            \\tinygrad, the maths underneath it, and the hardware under that.
             \\
-            \\Next: read tinygrad's own source (github.com/tinygrad/tinygrad). You'll
-            \\recognize it.
+            \\Next: read tinygrad's own source (github.com/tinygrad/tinygrad), and build
+            \\your own compiler: project/README.md. You'll recognize all of it.
             \\
         , .{exercises.len});
     }
