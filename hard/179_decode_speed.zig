@@ -24,8 +24,9 @@
 //     memory time  = weight bytes / bandwidth          (per step)
 //     compute time = 2 * N * B / peak flops           (per step)
 //
-// They're equal at B = peak * bytes_per_weight / (2 * bandwidth): for f16,
-// just peak / bandwidth, a few hundred on modern GPUs. Below that, bigger
+// Set the two equal and solve for B (N weights are N * bytes_per_weight
+// bytes): N cancels. For f16 it comes to just peak / bandwidth, a few
+// hundred on modern GPUs. Below that, bigger
 // batches are almost free. That's why inference servers batch aggressively
 // (145), and why speculative decoding (144) works: checking several draft
 // tokens costs barely more than one.

@@ -7,9 +7,8 @@
 // small model, one token at a time, can mean hundreds of tiny kernels of
 // ~2 microseconds each, per token. Then the overhead IS the runtime.
 //
-//     plain:  n * (launch + kernel)
-//     graph:  one launch for the whole batch of kernels, then n kernels:
-//             launch + n * kernel
+//     plain:  every one of the n kernels pays for its own launch
+//     graph:  one launch for the whole batch, then the n kernels
 //
 // A *graph* is the whole list of kernels (with their arguments) recorded
 // once and submitted as a unit. CUDA calls them CUDA graphs. tinygrad's

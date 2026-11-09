@@ -75,3 +75,7 @@ c4_checkpoint_part_four | var kept = [_]bool{false} ** 65; var total: f64 = 0; v
 # whole size, which the MOD of every digit removes.
 c5_checkpoint_part_five | if (op == .cmplt or op == .cmpne) return .bool; return if (@intFromEnum(a) > @intFromEnum(b)) a else b;
 c5_checkpoint_part_five | var flat: usize = 1; for (out, out_shape) |i, n| flat = flat * n + i; var k = in_shape.len; while (k > 0) { k -= 1; in[k] = flat % in_shape[k]; flat /= in_shape[k]; }
+# relu(0) is 0 either way; a bigger shared array is still big enough; equal values tie either way.
+c6_checkpoint_part_six | const relu_kernel = \\KERNEL void relu(float *out, const float *x, int n) { \\ int i = blockIdx_x * blockDim_x + threadIdx_x; \\ if (i < n) out[i] = x[i] >= 0.0f ? x[i] : 0.0f; \\} \\ ;
+c6_checkpoint_part_six | const block_max_kernel = \\KERNEL void block_max(float *out, const float *x) { \\ static SHARED float sh[257]; \\ int tid = threadIdx_x; \\ sh[tid] = x[blockIdx_x * 256 + tid]; \\ __syncthreads(); \\ for (int s = 128; s > 0; s >>= 1) { \\ if (tid < s && sh[tid + s] > sh[tid]) sh[tid] = sh[tid + s]; \\ __syncthreads(); \\ } \\ if (tid == 0) out[blockIdx_x] = sh[0]; \\} \\ ;
+c6_checkpoint_part_six | const block_max_kernel = \\KERNEL void block_max(float *out, const float *x) { \\ static SHARED float sh[256]; \\ int tid = threadIdx_x; \\ sh[tid] = x[blockIdx_x * 256 + tid]; \\ __syncthreads(); \\ for (int s = 128; s > 0; s >>= 1) { \\ if (tid < s && sh[tid + s] >= sh[tid]) sh[tid] = sh[tid + s]; \\ __syncthreads(); \\ } \\ if (tid == 0) out[blockIdx_x] = sh[0]; \\} \\ ;

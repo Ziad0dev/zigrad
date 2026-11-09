@@ -15,9 +15,10 @@
 // Each operation updates both parts, using rules you already know:
 //
 //     (a + b).deriv = a.deriv + b.deriv
-//     (a * b).deriv = a.deriv * b.value + a.value * b.deriv   (product rule)
-//     sin(a).deriv  = cos(a.value) * a.deriv                  (chain rule)
-//     exp(a).deriv  = exp(a.value) * a.deriv                  (chain rule)
+//     (a * b).deriv = the product rule (027), on values and derivs
+//     sin(a).deriv  = the chain rule (028): sin's own derivative, at
+//                     a.value, times a.deriv
+//     exp(a).deriv  = the chain rule again, for exp
 //
 // Push any formula through these, and the derivative falls out at the
 // end. That's *forward-mode automatic differentiation*. These pairs are

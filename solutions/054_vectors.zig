@@ -31,7 +31,8 @@
 //
 //   * projecting a onto b ("how much of a points along b?"):
 //
-//         proj = (dot(a, b) / dot(b, b)) * b
+//     The answer is b, scaled: by a's dot product with b, divided by
+//     b's dot product with itself (its squared length).
 //
 // YOUR TASK: write dot, norm, cosine and project.
 //

@@ -21,8 +21,8 @@
 // Backward uses the same mask: dx = dy * mask / (1 - p).
 //
 // The mask needs random numbers inside a kernel: exactly what the
-// counter-based generator of 064 is for. Element i keeps its value if
-// uniform(seed, i) >= p.
+// counter-based generator of 064 is for. Element i draws uniform(seed, i),
+// a number in [0, 1), and has to be dropped with probability p.
 //
 // YOUR TASK: finish forward (both modes) and backward.
 //

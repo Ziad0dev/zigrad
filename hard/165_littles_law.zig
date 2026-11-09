@@ -13,7 +13,7 @@
 //
 // *Little's law* (from queueing theory) says exactly how many:
 //
-//     bytes in flight = bandwidth * latency
+//     how many are inside = how fast they arrive * how long each stays
 //
 // Example: 1 TB/s with 500 ns of latency needs 10^12 * 500 * 10^-9 =
 // 500,000 bytes in flight: over 120,000 f32 loads outstanding, all the

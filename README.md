@@ -2,7 +2,7 @@
 
 A zero-to-hero course on [tinygrad](https://github.com/tinygrad/tinygrad), on deep learning, and on the maths underneath both, taught by rebuilding it all in Zig one small broken program at a time. The format follows [ziglings](https://codeberg.org/ziglings/exercises).
 
-There are 206 exercises in six parts, and five checkpoints between them. Each exercise teaches a single idea in its comments, then leaves you a hole or a bug to fix. Fix it and the tests at the bottom pass. Each checkpoint asks you to write, from memory, functions from all over the part you just finished. You don't need any maths beyond school algebra, or any prior Zig: both are introduced as they come up.
+There are 208 exercises in six parts, with a checkpoint after each part. Each exercise teaches a single idea in its comments, then leaves you a hole or a bug to fix. Fix it and the tests at the bottom pass. Each checkpoint asks you to write, from memory, functions from all over the part you just finished. You don't need any maths beyond school algebra, or any prior Zig: both are introduced as they come up.
 
 Parts I–IV teach the ideas with small, made-up IRs. Part V rebuilds tinygrad as it is today, with its real UOps, the UIR text format, rangeify and its code generator, the way George Hotz's [10-411](https://10-411.com/) course specifies them. Part VI runs machine learning kernels on a real NVIDIA GPU; without one, its tests compile the kernels and then skip.
 
@@ -55,7 +55,7 @@ The course has three levels of difficulty, on purpose. Filling a blank in code t
 |---|---|---|
 | Fill in | `exercises/`, `zig build` | Complete a few expressions in finished code. Start here for anything new to you. |
 | Hard mode | `hard/`, `zig build -Dhard` | Every function that had a blank has lost its whole body. Same tests, same hints. Progress is tracked separately, so you can do both. |
-| Checkpoints | `c1` to `c5`, in the normal run after each part | No blanks and nothing new: five functions from five different chapters, written from memory. |
+| Checkpoints | `c1` to `c6`, in the normal run after each part | No blanks and nothing new: five functions from five different chapters, written from memory. |
 
 Some habits that the research on learning supports, and that this format makes easy:
 
@@ -69,17 +69,17 @@ These feel slower and harder than rereading. That is the point: the difficulty i
 
 ## Learning paths
 
-206 exercises is a lot. You don't have to do them in one straight line:
+208 exercises is a lot. You don't have to do them in one straight line:
 
 | If you want to... | Do |
 |---|---|
 | understand how tinygrad works, fast | Part I (001–053), then chapter 30 (156–160) |
 | understand tinygrad as it is today | chapters 1–4 (001–025), then Part V (181–200) |
 | learn the maths of deep learning | chapters 1–7 (001–039), then 11–13 (054–070) and 16–18 (082–101) |
-| write fast kernels | chapters 1–4 and 8–10 (001–025, 040–053), then 14–15 (071–081), 28–29 (146–155), 31–32 (161–170), 38 (196–200) and Part VI (201–206) |
+| write fast kernels | chapters 1–4 and 8–10 (001–025, 040–053), then 14–15 (071–081), 28–29 (146–155), 31–32 (161–170), 38 (196–200) and Part VI (201–208) |
 | understand modern LLMs | chapters 1–7 (001–039), 16–17 (082–095), 22 (116–120), 27 (141–145) and 33–34 (171–180) |
-| build an ML compiler (George Hotz's [Compilers for Machine Learning](https://10-411.com/), CMU 10-411) | chapters 1–8 (001–043) for the ideas, then Part V (181–200) for the real IR, UIR, rangeify and codegen, Part VI (201–206) for GPUs, and the [final project](project/README.md), which maps every week of the course to the exercises |
-| everything | 001 to 206 in order: each part builds on the ones before |
+| build an ML compiler (George Hotz's [Compilers for Machine Learning](https://10-411.com/), CMU 10-411) | chapters 1–8 (001–043) for the ideas, then Part V (181–200) for the real IR, UIR, rangeify and codegen, Part VI (201–208) for GPUs, and the [final project](project/README.md), which maps every week of the course to the exercises |
+| everything | 001 to 208 in order: each part builds on the ones before |
 | the most challenge | `zig build -Dhard` from the start, dropping back to `exercises/` only for a file that defeats you |
 
 Later exercises point back to the earlier ones they use (for example "softmax (018)"), so if you skip ahead and meet something unfamiliar, the number tells you where it's taught. `zig build -Dn=N` checks a single exercise.
@@ -153,7 +153,8 @@ Later exercises point back to the earlier ones they use (for example "softmax (0
 | Chapter | Exercises | You learn |
 |---|---|---|
 | 39. The driver | 201–202 | the CUDA driver API from Zig, the way tinygrad's CUDA backend uses it; PTX; C kernels compiled to PTX by `zig cc`; your GPU's measured bandwidth, FLOPs, ridge point, and the price of uncoalesced reads |
-| 40. ML kernels | 203–206 | reductions with atomics, shared-memory trees and warp shuffles; naive, tiled and register-blocked matmuls; tensor cores with `mma.sync` and its fragment layouts; flash attention with an online softmax |
+| 40. ML kernels | 203–207 | reductions with atomics, shared-memory trees and warp shuffles; naive, tiled and register-blocked matmuls; tensor cores with `mma.sync` and its fragment layouts; flash attention with an online softmax; a convolution, direct and blocked over output channels |
+| 41. The whole stack | 208 | Part V's compiler meets Part VI's driver: a tensor graph goes through rangeify, comes out as CUDA kernels with the output ranges as the grid, and runs on your GPU |
 
 Want the whole picture before you start? `examples/tinygrad_in_one_file.zig` puts Part I's core together in about 500 lines:
 
@@ -174,6 +175,8 @@ zig test project/minicompiler.zig
 See [RESOURCES.md](RESOURCES.md) for the best books, courses, videos, articles and papers to go with each chapter.
 
 ## Afterwards
+
+Use the real thing. [TINYGRAD.md](TINYGRAD.md) is a field guide to programming tinygrad itself: how to pick a device, what each `DEBUG` level shows, twelve experiments that make tinygrad print the kernels you wrote by hand, and a map from every tinygrad source file to the exercises that rebuilt it. It works best alongside Part V.
 
 Read tinygrad's own source. The names you'll meet there (`UOp`, `graph_rewrite`, `PatternMatcher`, `UPat`, movement ops, `run_rangeify`, `apply_movement_op`, `remove_bufferize`, `shift_to`, the expander, `linearize`, renderers, OptOps, `BEAM`, `TinyJit`, HCQ, `render_uir`) are all things you've built. tinygrad changes quickly, so details will differ, but the ideas are the ones in this course. Every tinygrad fact in the exercises was checked against its source in November 2026 (tinygrad commit `411dd8d`).
 

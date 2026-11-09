@@ -150,7 +150,7 @@ Each week below has what the spec adds, what to build, the exercises that teach 
 
 **Done when:** a 256×256 matmul runs at least 10× faster than your first version. Compare with a BLAS library: benchmark it, don't call it.
 
-### Week 8. GPUs and hardware accelerators (198, 201–204, 077–079, 106–108, 166–168)
+### Week 8. GPUs and hardware accelerators (198, 201–204, 208, 077–079, 106–108, 166–168)
 
 **Spec:** kernels, axis mappings (`GLOBAL`, `LOCAL`), and "competitive CUDA/HIP code".
 
@@ -158,18 +158,20 @@ Each week below has what the spec adds, what to build, the exercises that teach 
 - The driver path, the way tinygrad does it (201).
 - Fitting axes to the grid (198).
 - Coalescing (202), reductions (203), tiled and register-blocked GEMMs (204).
+- Your own compiler's kernels on the GPU, with the output ranges as the grid (208). That is the GPU backend the "done when" below asks for, in its simplest form.
 
 Measure everything: 202 gives your GPU's real bandwidth and FLOPs.
 
 **Done when:** the fuzz test passes on the GPU backend, and a large matmul is competitive with PyTorch on the same GPU. 10-411 grades performance on RTX 3080s, tentatively.
 
-### Week 9. GPUs, part 2 (205, 206, 080, 095, 170)
+### Week 9. GPUs, part 2 (205–207, 080, 095, 170)
 
 **Spec:** tensor cores, upcasting, fast GEMMs, convolutions, and flash attention.
 
 **Build:**
 - `mma.sync` and its fragment layouts (205).
 - Flash attention with an online softmax (206).
+- A convolution, blocked over output channels (207).
 - Then feed the tensor cores from shared memory (204's staging, plus ldmatrix and cp.async).
 
 **Done when:** f16 GEMMs run on tensor cores well past your best f32 kernel, and attention's memory grows linearly with sequence length.

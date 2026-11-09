@@ -230,6 +230,9 @@ const exercises = [_]Exercise{
     .{ .file = "204_gpu_gemm.zig", .hint = "Thread (tx, ty) loads A[row][kt*16 + tx] and B[kt*16 + ty][col]. Sync after loading, and again after computing. acc[r][c] gets a[r] * b[c]." },
     .{ .file = "205_gpu_tensor_cores.zig", .hint = "Register r's row is g, plus 8 when r is odd; its column is 2q, plus 8 for r = 2 and 3. Each k step is one call of tile()." },
     .{ .file = "206_gpu_flash_attention.zig", .hint = "The old sums shrink by exp(m - m_new). Then l gets the new weight p, and each acc gets p times its value from V." },
+    .{ .file = "207_gpu_conv.zig", .hint = "One side is (size + 2 pad - kernel) / stride + 1. On the CPU the index is shifted by one, so 0 means padding. Blocked: one input value v goes into all 8 accumulators." },
+    .{ .file = "208_compiler_to_gpu.zig", .hint = "gid is the block's first thread plus the thread's own index (077). A range is (gid / the sizes after it) % its own size. Each launch argument is a pointer to the u64 holding the address." },
+    .{ .file = "c6_checkpoint_part_six.zig", .hint = "A sector is 32 bytes, an f32 is 4. block_max: 203's tree, with a compare where the add was, and no atomic: each block has its own out[b]." },
 };
 
 /// How many of those are numbered exercises; the rest are checkpoints.
