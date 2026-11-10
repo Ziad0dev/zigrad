@@ -94,7 +94,16 @@ fn bounds(u: *const UOp) [2]f64 {
             if (a[0] >= b[1]) return .{ 0, 0 }; // never true
             return .{ 0, 1 };
         },
-        .cast => return if (u.dtype == .bool) .{ 0, 1 } else bounds(u.src[0]),
+        .cast => {
+            if (u.dtype == .bool) return .{ 0, 1 };
+            const b = bounds(u.src[0]);
+            if (!u.dtype.isInt()) return b;
+            // to an int: toward zero (183), and an i32 that could wrap can be anything
+            const lo = @trunc(b[0]);
+            const hi = @trunc(b[1]);
+            if (u.dtype == .i32 and (lo < -2147483648 or hi > 2147483647)) return .{ -2147483648, 2147483647 };
+            return .{ lo, hi };
+        },
         else => return if (u.dtype == .bool) .{ 0, 1 } else anything,
     }
 }
@@ -409,12 +418,30 @@ const Graph = struct {
     /// The one way to make a UOp: hash-consed, with dtype and shape worked out.
     fn new(g: *Graph, op: Op, src: []const *const UOp, arg: Arg) Error!*const UOp {
         if (g.cache.get(.{ .op = op, .src = src, .arg = arg })) |u| return u;
+        try g.checkSrcs(op, src);
         const dtype = try dtypeOf(g, op, src, arg);
         const shape = try shapeOf(g, op, src, arg);
         const u = g.alloc.create(UOp) catch @panic("out of memory");
         u.* = .{ .op = op, .src = g.alloc.dupe(*const UOp, src) catch @panic("out of memory"), .arg = arg, .dtype = dtype, .shape = shape };
         g.cache.put(.{ .op = op, .src = u.src, .arg = arg }, u) catch @panic("out of memory");
         return u;
+    }
+
+    /// The right number of srcs, and no void where a value is needed.
+    fn checkSrcs(g: *Graph, op: Op, src: []const *const UOp) Error!void {
+        const ok = switch (op) {
+            .constant => src.len == 0,
+            .param, .buffer, .alloc, .range, .cast, .recip, .load => src.len == 1,
+            .add, .mul, .max, .xor, .shl, .div, .mod, .cmplt, .cmpne, .store, .assert, .reshape, .expand, .permute => src.len == 2,
+            .where, .pad, .shrink => src.len == 3,
+            .index, .after, .end, .stage, .call, .reduce => src.len >= 1,
+            .stack, .sink => true,
+        };
+        if (!ok) return g.fail("wrong number of srcs for this op");
+        if (op == .range and (src[0].intValue() orelse -1) < 0) return g.fail("a RANGE's end must be an int literal");
+        if (op.isAlu() or (op == .stack and src.len > 0)) {
+            for (src) |s| if (s.dtype == .void) return g.fail("a void value can't be used here");
+        }
     }
 
     fn fail(g: *Graph, why: []const u8) Error {

@@ -48,16 +48,26 @@ fn keepBuffer(rf: *Rangeify, x: *const UOp) bool {
     ???; // write this function's body
 }
 
-/// Un-realize every buffer keepBuffer() doesn't want, producers first.
+/// Un-realize every buffer keepBuffer() doesn't want, producers first, so
+/// each value is judged on the buffers that are really left below it.
 fn removeCheapBuffers(rf: *Rangeify, outputs: []const *const UOp) void {
-    var i: usize = 0;
-    while (i < rf.realize.count()) {
-        const x = rf.realize.keys()[i];
+    const sink = rf.g.sink(outputs) catch unreachable;
+    for (toposort(rf.g, sink, false)) |x| {
+        if (!rf.realize.contains(x)) continue;
         const is_output = std.mem.indexOfScalar(*const UOp, outputs, x) != null;
-        if (!is_output and !keepBuffer(rf, x)) {
-            _ = rf.realize.orderedRemove(x);
-        } else i += 1;
+        if (!is_output and !keepBuffer(rf, x)) _ = rf.realize.orderedRemove(x);
     }
+}
+
+/// The UOps of ONE kernel, srcs first. An AFTER is where another kernel's
+/// work begins: we take its buffer and stop, without walking into the
+/// kernel that wrote it.
+fn kernelNodes(g: *Graph, u: *const UOp, seen: *std.AutoHashMap(*const UOp, void), out: *std.ArrayList(*const UOp)) void {
+    if (seen.contains(u)) return;
+    seen.put(u, {}) catch @panic("out of memory");
+    const srcs = if (u.op == .after) u.src[0..1] else u.src;
+    for (srcs) |s| kernelNodes(g, s, seen, out);
+    out.append(g.alloc, u) catch @panic("out of memory");
 }
 
 /// A kernel (an END, or a STORE with no loop) as a CALL of a reusable body.
@@ -115,6 +125,28 @@ test "softmax: three kernels, like tinygrad's" {
     var afters: usize = 0;
     for (calls[2].src[1..]) |a| afters += @intFromBool(a.op == .after);
     try t.expectEqual(2, afters);
+}
+
+test "a kernel only takes its own buffers" {
+    var arena = std.heap.ArenaAllocator.init(t.allocator);
+    defer arena.deinit();
+    var g = Graph.init(arena.allocator());
+    const x = g.buffer(0, .f32, 4);
+    const w = g.buffer(1, .f32, 4);
+    const v = g.buffer(2, .f32, 4);
+    // three kernels in a chain: sum(x), then 1 / sum(that + w), then that * v
+    const y1 = try g.reduce(x, .add, 1);
+    const inv = try g.alu(.recip, &.{try g.reduce(try g.add(try g.expand(y1, &.{4}), w), .add, 1)});
+    const z = try g.mul(try g.expand(inv, &.{4}), v);
+    const calls = try expectScheduled(&g, &.{ x, w, v }, &.{ &.{ 1, 2, 3, 4 }, &.{ 0.5, 0, -1, 2 }, &.{ 1, -1, 2, 0 } }, z);
+    try t.expectEqual(3, calls.len);
+    // the last one reads inv and v and writes z: 3 arguments, not x's and w's too
+    try t.expectEqual(3, calls[2].src.len - 1);
+    try t.expectEqual(2, calls[0].src.len - 1);
+    // and its PARAMs are slots 0, 1, 2, with no gaps
+    for (toposort(&g, calls[2].src[0], false)) |u| {
+        if (u.op == .param) try t.expect(u.arg.param.slot < 3);
+    }
 }
 
 test "a buffer just for a permute is removed" {
@@ -373,12 +405,30 @@ const Graph = struct {
     /// The one way to make a UOp: hash-consed, with dtype and shape worked out.
     fn new(g: *Graph, op: Op, src: []const *const UOp, arg: Arg) Error!*const UOp {
         if (g.cache.get(.{ .op = op, .src = src, .arg = arg })) |u| return u;
+        try g.checkSrcs(op, src);
         const dtype = try dtypeOf(g, op, src, arg);
         const shape = try shapeOf(g, op, src, arg);
         const u = g.alloc.create(UOp) catch @panic("out of memory");
         u.* = .{ .op = op, .src = g.alloc.dupe(*const UOp, src) catch @panic("out of memory"), .arg = arg, .dtype = dtype, .shape = shape };
         g.cache.put(.{ .op = op, .src = u.src, .arg = arg }, u) catch @panic("out of memory");
         return u;
+    }
+
+    /// The right number of srcs, and no void where a value is needed.
+    fn checkSrcs(g: *Graph, op: Op, src: []const *const UOp) Error!void {
+        const ok = switch (op) {
+            .constant => src.len == 0,
+            .param, .buffer, .alloc, .range, .cast, .recip, .load => src.len == 1,
+            .add, .mul, .max, .xor, .shl, .div, .mod, .cmplt, .cmpne, .store, .assert, .reshape, .expand, .permute => src.len == 2,
+            .where, .pad, .shrink => src.len == 3,
+            .index, .after, .end, .stage, .call, .reduce => src.len >= 1,
+            .stack, .sink => true,
+        };
+        if (!ok) return g.fail("wrong number of srcs for this op");
+        if (op == .range and (src[0].intValue() orelse -1) < 0) return g.fail("a RANGE's end must be an int literal");
+        if (op.isAlu() or (op == .stack and src.len > 0)) {
+            for (src) |s| if (s.dtype == .void) return g.fail("a void value can't be used here");
+        }
     }
 
     fn fail(g: *Graph, why: []const u8) Error {
@@ -812,7 +862,16 @@ fn bounds(u: *const UOp) [2]f64 {
             if (a[0] >= b[1]) return .{ 0, 0 }; // never true
             return .{ 0, 1 };
         },
-        .cast => return if (u.dtype == .bool) .{ 0, 1 } else bounds(u.src[0]),
+        .cast => {
+            if (u.dtype == .bool) return .{ 0, 1 };
+            const b = bounds(u.src[0]);
+            if (!u.dtype.isInt()) return b;
+            // to an int: toward zero (183), and an i32 that could wrap can be anything
+            const lo = @trunc(b[0]);
+            const hi = @trunc(b[1]);
+            if (u.dtype == .i32 and (lo < -2147483648 or hi > 2147483647)) return .{ -2147483648, 2147483647 };
+            return .{ lo, hi };
+        },
         else => return if (u.dtype == .bool) .{ 0, 1 } else anything,
     }
 }
@@ -1066,7 +1125,7 @@ const Parser = struct {
                 const slot = args.slot orelse return g.fail("a buffer needs slot=");
                 const dtype = args.dtype orelse return g.fail("a buffer needs dtype=");
                 if (args.op != null or args.pop != null) return g.fail("unknown arg");
-                break :blk .{ .param = .{ .slot = @intCast(slot), .dtype = dtype } };
+                break :blk .{ .param = .{ .slot = std.math.cast(u32, slot) orelse return g.fail("slot= out of range"), .dtype = dtype } };
             },
             .range => blk: {
                 const slot = args.slot orelse return g.fail("a range needs slot=");
@@ -1076,7 +1135,7 @@ const Parser = struct {
             .reduce => blk: {
                 const rop = args.op orelse return g.fail("a reduce needs op=");
                 if (args.slot != null or args.dtype != null) return g.fail("unknown arg");
-                break :blk .{ .reduce = .{ .op = rop, .pop = @intCast(args.pop orelse 0) } };
+                break :blk .{ .reduce = .{ .op = rop, .pop = std.math.cast(u32, args.pop orelse 0) orelse return g.fail("pop= out of range") } };
             },
             .cast => blk: {
                 const dtype = args.dtype orelse return g.fail("a cast needs dtype=");
@@ -1375,7 +1434,8 @@ const Interp = struct {
             .buffer, .alloc, .after, .load => {
                 const target = if (u.op == .load) u.src[0] else u;
                 if (try it.place(target)) |p| return it.read(p);
-                return it.eval(target); // LOAD of a plain value is the value
+                // not memory (place() has run an AFTER's deps): the value underneath
+                return it.eval(u.src[0]);
             },
             .index => {
                 if (try it.place(u)) |p| return it.read(p);
@@ -1974,7 +2034,7 @@ const Lower = struct {
     /// One kernel: loops over x's ranges, storing every element of x.
     fn kernel(lw: *Lower, x: *const UOp) Error!void {
         const g = lw.g;
-        const ranges = lw.rf.ranges.get(x).?.out;
+        const ranges = (lw.rf.ranges.get(x) orelse return g.fail("an output must be computed: a bare buffer or literal has no kernel")).out;
         const size: ?usize = if (x.shape.len == 0) null else prod(x.shape);
         const buf = g.local(lw.slot, commit(x.dtype), size);
         lw.slot += 1;

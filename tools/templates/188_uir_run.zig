@@ -231,7 +231,8 @@ const Interp = struct {
             .buffer, .alloc, .after, .load => {
                 const target = if (u.op == .load) u.src[0] else u;
                 if (try it.place(target)) |p| return it.read(p);
-                return it.eval(target); // LOAD of a plain value is the value
+                // not memory (place() has run an AFTER's deps): the value underneath
+                return it.eval(u.src[0]);
             },
             .index => {
                 if (try it.place(u)) |p| return it.read(p);
@@ -472,6 +473,16 @@ test "week 3: loops" {
         \\%j = range 4 slot=1
         \\%copy = end (store (index %y %j) (add (index %xs %j) 1)) %j
         \\%test = assert (after %y %copy) [1 2 5 10]
+    );
+}
+
+test "AFTER and LOAD of a plain value are that value" {
+    try expectRuns(
+        \\%buf = buffer 4 slot=0 dtype=i32
+        \\%w = store %buf [1 2 3 4]
+        \\%x = after (index [10 20 30] 1) %w
+        \\%t = assert %x 20
+        \\%u = assert (load 7) 7
     );
 }
 

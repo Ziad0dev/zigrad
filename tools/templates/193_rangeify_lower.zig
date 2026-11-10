@@ -122,7 +122,7 @@ const Lower = struct {
     /// One kernel: loops over x's ranges, storing every element of x.
     fn kernel(lw: *Lower, x: *const UOp) Error!void {
         const g = lw.g;
-        const ranges = lw.rf.ranges.get(x).?.out;
+        const ranges = (lw.rf.ranges.get(x) orelse return g.fail("an output must be computed: a bare buffer or literal has no kernel")).out;
         const size: ?usize = if (x.shape.len == 0) null else prod(x.shape);
         const buf = g.local(lw.slot, commit(x.dtype), size);
         lw.slot += 1;

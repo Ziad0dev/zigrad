@@ -93,7 +93,16 @@ fn bounds(u: *const UOp) [2]f64 {
             if (⟪a[0] >= b[1]|||???⟫) return .{ 0, 0 }; // never true
             return .{ 0, 1 };
         },
-        .cast => return if (u.dtype == .bool) .{ 0, 1 } else bounds(u.src[0]),
+        .cast => {
+            if (u.dtype == .bool) return .{ 0, 1 };
+            const b = bounds(u.src[0]);
+            if (!u.dtype.isInt()) return b;
+            // to an int: toward zero (183), and an i32 that could wrap can be anything
+            const lo = @trunc(b[0]);
+            const hi = @trunc(b[1]);
+            if (u.dtype == .i32 and (lo < -2147483648 or hi > 2147483647)) return .{ -2147483648, 2147483647 };
+            return .{ lo, hi };
+        },
         else => return if (u.dtype == .bool) .{ 0, 1 } else anything,
     }
 }

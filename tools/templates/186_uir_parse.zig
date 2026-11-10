@@ -249,7 +249,7 @@ const Parser = struct {
                 const slot = args.slot orelse return g.fail("a buffer needs slot=");
                 const dtype = args.dtype orelse return g.fail("a buffer needs dtype=");
                 if (args.op != null or args.pop != null) return g.fail("unknown arg");
-                break :blk .{ .param = .{ .slot = @intCast(slot), .dtype = dtype } };
+                break :blk .{ .param = .{ .slot = std.math.cast(u32, slot) orelse return g.fail("slot= out of range"), .dtype = dtype } };
             },
             .range => blk: {
                 const slot = args.slot orelse return g.fail("a range needs slot=");
@@ -259,7 +259,7 @@ const Parser = struct {
             .reduce => blk: {
                 const rop = args.op orelse return g.fail("a reduce needs op=");
                 if (args.slot != null or args.dtype != null) return g.fail("unknown arg");
-                break :blk .{ .reduce = .{ .op = rop, .pop = @intCast(args.pop orelse 0) } };
+                break :blk .{ .reduce = .{ .op = rop, .pop = std.math.cast(u32, args.pop orelse 0) orelse return g.fail("pop= out of range") } };
             },
             .cast => blk: {
                 const dtype = args.dtype orelse return g.fail("a cast needs dtype=");
@@ -400,6 +400,11 @@ test "errors, like tinygrad's" {
         "%x = add %x 1", //                  used in its own definition
         "%x = add [1 2 3] 4", //             the spec: shapes must match
         "%x = { %y = 1 }\n%z = %y", //       a block's names stay inside it
+        "%x = add 1", //                     too few srcs
+        "%x = where true 1", //              too few srcs
+        "%x = add [] 1", //                  [] has no value to add
+        "%x = buffer 3 slot=-1 dtype=i32", // a slot can't be negative
+        "%x = reduce [1 2] op=add pop=-1", // nor a pop
     };
     for (bad) |text| {
         if (parseUir(&g, text)) |_| {

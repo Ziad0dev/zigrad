@@ -204,13 +204,16 @@ fn renderLinear(g: *Graph, list: []const *const UOp, w: *std.Io.Writer) std.Io.W
                         if (u.src[0].op == .index) try w.writeAll(src) else try w.print("{s}[0]", .{src});
                     },
                     .where => try w.print("({s} ? {s} : {s})", .{ names.get(u.src[0]).?, names.get(u.src[1]).?, names.get(u.src[2]).? }),
-                    .cast => try w.print("(({s}){s})", .{ CRender.ctype(u.dtype), names.get(u.src[0]).? }),
+                    .cast => if (u.dtype == .bool)
+                        try w.print("({s} != 0)", .{names.get(u.src[0]).?})
+                    else
+                        try w.print("(({s}){s})", .{ CRender.ctype(u.dtype), names.get(u.src[0]).? }),
                     .recip => try w.print("(1.0f / {s})", .{names.get(u.src[0]).?}),
                     .max => try w.print("{s}({s}, {s})", .{ if (u.dtype.isFloat()) "fmax2" else "imax2", names.get(u.src[0]).?, names.get(u.src[1]).? }),
                     .div, .mod => try w.print("{s}({s}, {s})", .{ if (u.op == .div) "idiv" else "imod", names.get(u.src[0]).?, names.get(u.src[1]).? }),
                     else => {
                         const sym = switch (u.op) {
-                            .add => "+",
+                            .add => if (u.dtype == .bool) "|" else "+",
                             .mul => "*",
                             .xor => "^",
                             .shl => "<<",

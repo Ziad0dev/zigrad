@@ -187,7 +187,7 @@ const Parser = struct {
                 const slot = args.slot orelse return g.fail("a buffer needs slot=");
                 const dtype = args.dtype orelse return g.fail("a buffer needs dtype=");
                 if (args.op != null or args.pop != null) return g.fail("unknown arg");
-                break :blk .{ .param = .{ .slot = @intCast(slot), .dtype = dtype } };
+                break :blk .{ .param = .{ .slot = std.math.cast(u32, slot) orelse return g.fail("slot= out of range"), .dtype = dtype } };
             },
             .range => blk: {
                 const slot = args.slot orelse return g.fail("a range needs slot=");
@@ -197,7 +197,7 @@ const Parser = struct {
             .reduce => blk: {
                 const rop = args.op orelse return g.fail("a reduce needs op=");
                 if (args.slot != null or args.dtype != null) return g.fail("unknown arg");
-                break :blk .{ .reduce = .{ .op = rop, .pop = @intCast(args.pop orelse 0) } };
+                break :blk .{ .reduce = .{ .op = rop, .pop = std.math.cast(u32, args.pop orelse 0) orelse return g.fail("pop= out of range") } };
             },
             .cast => blk: {
                 const dtype = args.dtype orelse return g.fail("a cast needs dtype=");
@@ -337,6 +337,11 @@ test "errors, like tinygrad's" {
         "%x = add %x 1", //                  used in its own definition
         "%x = add [1 2 3] 4", //             the spec: shapes must match
         "%x = { %y = 1 }\n%z = %y", //       a block's names stay inside it
+        "%x = add 1", //                     too few srcs
+        "%x = where true 1", //              too few srcs
+        "%x = add [] 1", //                  [] has no value to add
+        "%x = buffer 3 slot=-1 dtype=i32", // a slot can't be negative
+        "%x = reduce [1 2] op=add pop=-1", // nor a pop
     };
     for (bad) |text| {
         if (parseUir(&g, text)) |_| {
@@ -536,12 +541,30 @@ const Graph = struct {
     /// The one way to make a UOp: hash-consed, with dtype and shape worked out.
     fn new(g: *Graph, op: Op, src: []const *const UOp, arg: Arg) Error!*const UOp {
         if (g.cache.get(.{ .op = op, .src = src, .arg = arg })) |u| return u;
+        try g.checkSrcs(op, src);
         const dtype = try dtypeOf(g, op, src, arg);
         const shape = try shapeOf(g, op, src, arg);
         const u = g.alloc.create(UOp) catch @panic("out of memory");
         u.* = .{ .op = op, .src = g.alloc.dupe(*const UOp, src) catch @panic("out of memory"), .arg = arg, .dtype = dtype, .shape = shape };
         g.cache.put(.{ .op = op, .src = u.src, .arg = arg }, u) catch @panic("out of memory");
         return u;
+    }
+
+    /// The right number of srcs, and no void where a value is needed.
+    fn checkSrcs(g: *Graph, op: Op, src: []const *const UOp) Error!void {
+        const ok = switch (op) {
+            .constant => src.len == 0,
+            .param, .buffer, .alloc, .range, .cast, .recip, .load => src.len == 1,
+            .add, .mul, .max, .xor, .shl, .div, .mod, .cmplt, .cmpne, .store, .assert, .reshape, .expand, .permute => src.len == 2,
+            .where, .pad, .shrink => src.len == 3,
+            .index, .after, .end, .stage, .call, .reduce => src.len >= 1,
+            .stack, .sink => true,
+        };
+        if (!ok) return g.fail("wrong number of srcs for this op");
+        if (op == .range and (src[0].intValue() orelse -1) < 0) return g.fail("a RANGE's end must be an int literal");
+        if (op.isAlu() or (op == .stack and src.len > 0)) {
+            for (src) |s| if (s.dtype == .void) return g.fail("a void value can't be used here");
+        }
     }
 
     fn fail(g: *Graph, why: []const u8) Error {

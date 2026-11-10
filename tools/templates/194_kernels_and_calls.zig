@@ -70,16 +70,26 @@ fn keepBuffer(rf: *Rangeify, x: *const UOp) bool {
     return false;
 }
 
-/// Un-realize every buffer keepBuffer() doesn't want, producers first.
+/// Un-realize every buffer keepBuffer() doesn't want, producers first, so
+/// each value is judged on the buffers that are really left below it.
 fn removeCheapBuffers(rf: *Rangeify, outputs: []const *const UOp) void {
-    var i: usize = 0;
-    while (i < rf.realize.count()) {
-        const x = rf.realize.keys()[i];
+    const sink = rf.g.sink(outputs) catch unreachable;
+    for (toposort(rf.g, sink, false)) |x| {
+        if (!rf.realize.contains(x)) continue;
         const is_output = std.mem.indexOfScalar(*const UOp, outputs, x) != null;
-        if (!is_output and !keepBuffer(rf, x)) {
-            _ = rf.realize.orderedRemove(x);
-        } else i += 1;
+        if (!is_output and !keepBuffer(rf, x)) _ = rf.realize.orderedRemove(x);
     }
+}
+
+/// The UOps of ONE kernel, srcs first. An AFTER is where another kernel's
+/// work begins: we take its buffer and stop, without walking into the
+/// kernel that wrote it.
+fn kernelNodes(g: *Graph, u: *const UOp, seen: *std.AutoHashMap(*const UOp, void), out: *std.ArrayList(*const UOp)) void {
+    if (seen.contains(u)) return;
+    seen.put(u, {}) catch @panic("out of memory");
+    const srcs = if (u.op == .after) u.src[0..1] else u.src;
+    for (srcs) |s| kernelNodes(g, s, seen, out);
+    out.append(g.alloc, u) catch @panic("out of memory");
 }
 
 /// A kernel (an END, or a STORE with no loop) as a CALL of a reusable body.
@@ -88,7 +98,10 @@ fn toCall(g: *Graph, kernel: *const UOp) Error!*const UOp {
     var args: std.ArrayList(*const UOp) = .empty;
     var slot_of = std.AutoHashMap(*const UOp, u32).init(g.alloc); // buffer -> PARAM slot
     var ranges: u32 = 0;
-    for (toposort(g, kernel, false)) |u| {
+    var seen = std.AutoHashMap(*const UOp, void).init(g.alloc);
+    var nodes: std.ArrayList(*const UOp) = .empty;
+    kernelNodes(g, kernel, &seen, &nodes);
+    for (nodes.items) |u| {
         switch (u.op) {
             .buffer, .alloc => {
                 if (slot_of.contains(u)) continue;
@@ -167,6 +180,28 @@ test "softmax: three kernels, like tinygrad's" {
     var afters: usize = 0;
     for (calls[2].src[1..]) |a| afters += @intFromBool(a.op == .after);
     try t.expectEqual(2, afters);
+}
+
+test "a kernel only takes its own buffers" {
+    var arena = std.heap.ArenaAllocator.init(t.allocator);
+    defer arena.deinit();
+    var g = Graph.init(arena.allocator());
+    const x = g.buffer(0, .f32, 4);
+    const w = g.buffer(1, .f32, 4);
+    const v = g.buffer(2, .f32, 4);
+    // three kernels in a chain: sum(x), then 1 / sum(that + w), then that * v
+    const y1 = try g.reduce(x, .add, 1);
+    const inv = try g.alu(.recip, &.{try g.reduce(try g.add(try g.expand(y1, &.{4}), w), .add, 1)});
+    const z = try g.mul(try g.expand(inv, &.{4}), v);
+    const calls = try expectScheduled(&g, &.{ x, w, v }, &.{ &.{ 1, 2, 3, 4 }, &.{ 0.5, 0, -1, 2 }, &.{ 1, -1, 2, 0 } }, z);
+    try t.expectEqual(3, calls.len);
+    // the last one reads inv and v and writes z: 3 arguments, not x's and w's too
+    try t.expectEqual(3, calls[2].src.len - 1);
+    try t.expectEqual(2, calls[0].src.len - 1);
+    // and its PARAMs are slots 0, 1, 2, with no gaps
+    for (toposort(&g, calls[2].src[0], false)) |u| {
+        if (u.op == .param) try t.expect(u.arg.param.slot < 3);
+    }
 }
 
 test "a buffer just for a permute is removed" {

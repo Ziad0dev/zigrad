@@ -84,9 +84,10 @@ const CRender = struct {
                 try w.writeAll(")");
             },
             .cast => {
-                try w.print("(({s})", .{ctype(u.dtype)});
+                // to bool is x != 0 (183), not C's (int)x
+                if (u.dtype == .bool) try w.writeAll("(") else try w.print("(({s})", .{ctype(u.dtype)});
                 try r.expr(u.src[0]);
-                try w.writeAll(")");
+                try w.writeAll(if (u.dtype == .bool) " != 0)" else ")");
             },
             .recip => {
                 try w.writeAll("(1.0f / ");
@@ -107,7 +108,7 @@ const CRender = struct {
             },
             .add, .mul, .xor, .shl, .cmplt, .cmpne => {
                 const sym = switch (u.op) {
-                    .add => " + ",
+                    .add => if (u.dtype == .bool) " | " else " + ", // bool ADD is OR (183)
                     .mul => " * ",
                     .xor => " ^ ",
                     .shl => " << ",
@@ -369,6 +370,18 @@ test "an int reduce gets an int accumulator" {
     // max starts from the smallest int, not from a float's -inf
     try t.expect(std.mem.indexOf(u8, out.written(), "int acc0 = -2147483648;") != null);
     try t.expect(std.mem.indexOf(u8, out.written(), "acc0 = imax2(acc0, p1[((r1 * 4) + r0)]);") != null);
+}
+
+test "bools in C follow the spec, not C" {
+    var arena = std.heap.ArenaAllocator.init(t.allocator);
+    defer arena.deinit();
+    var g = Graph.init(arena.allocator());
+    var out: std.Io.Writer.Allocating = .init(g.alloc);
+    var r: CRender = .{ .g = &g, .w = &out.writer, .accs = .init(g.alloc) };
+    const x = g.param(0, .f32, null);
+    const b = try g.cast(x, .bool);
+    try r.expr(try g.add(b, b)); // a cast to bool is x != 0, and bool ADD is OR (183)
+    try t.expectEqualStrings("((p0[0] != 0) | (p0[0] != 0))", out.written());
 }
 
 test "softmax, compiled: three kernels that agree with the interpreter" {
