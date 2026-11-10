@@ -2,7 +2,7 @@
 
 The exercises rebuild tinygrad in Zig. This page is the other half: how to drive the real thing, in Python, and watch it do what you built. Do it alongside Part V, not after: every experiment below takes a minute, and seeing tinygrad print the kernel you just wrote by hand is the best check there is that you understood it.
 
-Everything here was checked against tinygrad's source and its own `docs/` at commit `411dd8d` (November 9, 2026), and the experiments and the training step below were run at that commit on `DEV=CPU`. They were not run on a GPU: the machine this was written on had neither nvrtc nor an LLVM library tinygrad could load. tinygrad changes weekly. When this page and the source disagree, the source wins; `docs/env_vars.md` in the tinygrad repo is the first place to look.
+Everything here was checked against tinygrad's source and its own `docs/` at commit `411dd8d` (November 9, 2026), and the experiments and the training step below were run at that commit on `DEV=CPU` and on `DEV=CUDA:PTX` (an RTX 5060 Ti), from this repository's Nix shell. tinygrad changes weekly. When this page and the source disagree, the source wins; `docs/env_vars.md` in the tinygrad repo is the first place to look.
 
 ## Setup
 
@@ -12,7 +12,9 @@ cd tinygrad
 python3 -m pip install -e .
 ```
 
-tinygrad has no required dependencies beyond Python. Pick a device with `DEV`:
+tinygrad has no required dependencies beyond Python. With Nix, this repository's dev shell (`nix develop`, or direnv) already has what the backends below need: clang for `CPU`, an LLVM library for `CUDA:PTX` and `CPU:LLVM`, and the paths tinygrad needs to find libc, LLVM and your NVIDIA driver's libcuda. So on an NVIDIA machine, `DEV=CUDA:PTX python3 your_script.py` works from that shell with no CUDA toolkit installed.
+
+Pick a device with `DEV`:
 
 | `DEV=` | What runs your kernels | Needs |
 |---|---|---|
@@ -29,7 +31,7 @@ print(Device.DEFAULT)
 print((Tensor([1, 2, 3]) + 1).tolist())
 ```
 
-If that fails with "failed to load library ...: try setting X_PATH?", tinygrad couldn't find a shared library by its usual name. Point it at the file: `LIBC_PATH=/path/to/libc.so.6`, `CUDA_PATH=/path/to/libcuda.so.1`, `LLVM_PATH=/path/to/libLLVM.so`. This happens on NixOS, where libraries don't live in `/usr/lib`. There, also set `CC=clang`: the CPU backend runs `$CC`, and it passes flags only clang accepts.
+If that fails with "failed to load library ...: try setting X_PATH?", tinygrad couldn't find a shared library by its usual name. Point it at the file: `LIBC_PATH=/path/to/libc.so.6`, `CUDA_PATH=/path/to/libcuda.so.1`, `LLVM_PATH=/path/to/libLLVM.so`. This happens on NixOS, where libraries don't live in `/usr/lib`; the dev shell sets all three for you. The CPU backend also runs `$CC` if it is set, with flags only clang accepts, so if `CC` is gcc, run with `CC=clang`.
 
 ## The one idea: nothing runs until you ask
 

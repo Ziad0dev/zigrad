@@ -15,16 +15,39 @@
       forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
     in
     {
-      devShells = forAllSystems (pkgs: {
-        default = pkgs.mkShell {
-          packages = [
-            pkgs.zig_0_16 # the course targets Zig 0.16.0
-            pkgs.python3 # only for tools/gen.py
-          ];
-          shellHook = ''
-            echo "zigrad: zig $(zig version). Run 'zig build' to check the exercises."
-          '';
-        };
-      });
+      devShells = forAllSystems (
+        pkgs:
+        let
+          llvm = pkgs.llvmPackages_21; # the newest LLVM tinygrad looks for by name
+        in
+        {
+          # NoCC: no gcc and no $CC, so tinygrad falls back to the clang below
+          default = pkgs.mkShellNoCC (
+            {
+              packages = [
+                pkgs.zig_0_16 # the course targets Zig 0.16.0
+                pkgs.python3 # tools/gen.py, and tinygrad itself (TINYGRAD.md)
+                llvm.clang-unwrapped # tinygrad's CPU backend compiles its kernels with clang
+              ];
+              shellHook = ''
+                # The NVIDIA driver's libcuda comes from the host, not from nixpkgs:
+                # NixOS, then the usual places on other Linux systems.
+                for lib in /run/opengl-driver/lib/libcuda.so.1 /usr/lib/x86_64-linux-gnu/libcuda.so.1 /usr/lib64/libcuda.so.1 /usr/lib/wsl/lib/libcuda.so.1; do
+                  if [ -e "$lib" ]; then export CUDA_PATH="$lib"; break; fi
+                done
+                echo "zigrad: zig $(zig version). Run 'zig build' to check the exercises."
+              '';
+            }
+            # What real tinygrad needs to run from this shell (TINYGRAD.md). It
+            # finds shared libraries by name in /usr/lib, which Nix doesn't use,
+            # so each one is named here. All from one nixpkgs, so they agree on
+            # glibc with the python that loads them.
+            // pkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
+              LIBC_PATH = "${pkgs.glibc}/lib/libc.so.6";
+              LLVM_PATH = "${llvm.libllvm.lib}/lib/libLLVM.so"; # DEV=CUDA:PTX and DEV=CPU:LLVM
+            }
+          );
+        }
+      );
     };
 }
