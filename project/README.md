@@ -108,7 +108,7 @@ Each week below has what the spec adds, what to build, the exercises that teach 
 - Lowering to `STORE`/`INDEX`/`END`/`AFTER` (193).
 - The cost check that removes cheap buffers, and kernels as `CALL`s (194).
 
-**Done when:** the week 4 example passes, and you can predict the kernel count of any graph. Softmax should be three kernels.
+**Done when:** the week 4 example passes, and you can predict the kernel count of any graph. Softmax over a batch of rows should be three kernels (tinygrad needs only two for a single vector: the divide joins the scalar sum's kernel).
 
 ### Week 5. Movement ops (189, 191, 009–014, 073–074, 147–150)
 

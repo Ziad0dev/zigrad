@@ -22,6 +22,8 @@ jobs:
         run: git diff --exit-code exercises hard solutions
       - name: Every error points at a ??? hole
         run: python3 tools/check_holes.py
+      - name: Every allowlisted mutant matches exactly one hole
+        run: python3 tools/check_allowlist.py
       - name: The build runner passes on the solutions
         run: zig build -Dsolutions
       - name: The one-file example

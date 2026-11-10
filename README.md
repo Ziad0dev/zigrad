@@ -190,6 +190,7 @@ tools/verify.sh           # every exercise fails (both versions), every solution
 tools/verify.sh 07        # just exercises 070-079
 python3 tools/check_holes.py   # every compile error points at a ??? hole
 python3 tools/mutate.py 18     # mutation testing: do the tests catch wrong answers?
+python3 tools/check_allowlist.py   # every allowlisted mutant matches exactly one hole
 ```
 
 `tools/mutate.py` takes each hole's answer, makes one small mistake in it (a flipped operator, a constant off by one, swapped arguments, a dropped line), and checks that the exercise's tests then fail. A mistake that passes is either a gap in the tests or an equivalent answer; the known equivalent ones are listed, with the reason, in `tools/mutants_ok.txt`. Run it on any exercise you change.

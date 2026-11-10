@@ -35,6 +35,9 @@
 // and the output. tinygrad agrees, at this stage. Then a cost check
 // throws away buffers that are cheap to recompute, and x - max is one:
 // that's 194, and it's how tinygrad's softmax ends up as three kernels.
+// (Run on a batch of rows, tinygrad gives exactly those three. On a single
+// vector like this one it saves one more: the sum is a single number, so
+// the divide joins the sum's kernel, as a second loop. Two kernels.)
 //
 // YOUR TASK: rules 2, 3 and 4, and realizing below a broadcast.
 //

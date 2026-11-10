@@ -114,7 +114,7 @@ fn softmax(g: *Graph, x: *const UOp, n: usize) !*const UOp {
     return g.mul(d, try g.expand(inv, &.{n}));
 }
 
-test "softmax: three kernels, like tinygrad's" {
+test "softmax: three kernels, like tinygrad's for a batch" {
     var arena = std.heap.ArenaAllocator.init(t.allocator);
     defer arena.deinit();
     var g = Graph.init(arena.allocator());

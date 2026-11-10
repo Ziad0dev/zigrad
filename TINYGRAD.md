@@ -2,7 +2,7 @@
 
 The exercises rebuild tinygrad in Zig. This page is the other half: how to drive the real thing, in Python, and watch it do what you built. Do it alongside Part V, not after: every experiment below takes a minute, and seeing tinygrad print the kernel you just wrote by hand is the best check there is that you understood it.
 
-Everything here was checked against tinygrad's source and its own `docs/` at commit `411dd8d` (November 9, 2026). The commands were **read from the source, not run** while writing this page, so treat any output described here as what to expect, not as a recording. tinygrad changes weekly. When this page and the source disagree, the source wins; `docs/env_vars.md` in the tinygrad repo is the first place to look.
+Everything here was checked against tinygrad's source and its own `docs/` at commit `411dd8d` (November 9, 2026), and the experiments and the training step below were run at that commit on `DEV=CPU`. They were not run on a GPU: the machine this was written on had neither nvrtc nor an LLVM library tinygrad could load. tinygrad changes weekly. When this page and the source disagree, the source wins; `docs/env_vars.md` in the tinygrad repo is the first place to look.
 
 ## Setup
 
@@ -17,7 +17,7 @@ tinygrad has no required dependencies beyond Python. Pick a device with `DEV`:
 | `DEV=` | What runs your kernels | Needs |
 |---|---|---|
 | `CPU` | C compiled by clang, or `CPU:LLVM` | `clang` on your `PATH` |
-| `CUDA` | the CUDA driver API, the path exercise 201 takes | an NVIDIA driver; nvrtc to compile, or `CUDA:PTX` to use tinygrad's own PTX renderer and need no toolkit at all |
+| `CUDA` | the CUDA driver API, the path exercise 201 takes | an NVIDIA driver, plus something to compile with: nvrtc (from the CUDA toolkit), or `CUDA:PTX`, which needs an LLVM shared library instead |
 | `NV` | tinygrad's own userspace NVIDIA driver, no CUDA at all | an Ampere, Ada or Blackwell GPU |
 | `PYTHON` | a pure-Python interpreter of the UOps (043, 188) | nothing |
 
@@ -28,6 +28,8 @@ from tinygrad import Tensor, Device
 print(Device.DEFAULT)
 print((Tensor([1, 2, 3]) + 1).tolist())
 ```
+
+If that fails with "failed to load library ...: try setting X_PATH?", tinygrad couldn't find a shared library by its usual name. Point it at the file: `LIBC_PATH=/path/to/libc.so.6`, `CUDA_PATH=/path/to/libcuda.so.1`, `LLVM_PATH=/path/to/libLLVM.so`. This happens on NixOS, where libraries don't live in `/usr/lib`. There, also set `CC=clang`: the CPU backend runs `$CC`, and it passes flags only clang accepts.
 
 ## The one idea: nothing runs until you ask
 
@@ -51,7 +53,7 @@ y.realize()                   # rangeify, codegen, compile, run
 | 2 | one line per kernel run: time, memory, bandwidth, GFLOPS | 044, 176, 202 |
 | 3 | the opts applied to each kernel | 079, 196 |
 | 4 | the generated code (C, or PTX) | 042, 195, 201 |
-| 5 | the UOps of each kernel | 182, 187, 193 |
+| 5 | the UOps of each kernel, printed as UIR | 182, 187, 193 |
 | 6 | the UOps linearized, one per line | 041, 199 |
 | 7 | the assembly | 045 |
 
@@ -82,14 +84,14 @@ with Context(DEBUG=4):
 Each one is a prediction first: write down what you expect, then run it. If you were wrong, the exercise number says where to look.
 
 1. **Fusion.** `DEBUG=2`, `((x * 2) + 1).relu().realize()` for `x = Tensor.rand(1024)`. How many kernels? (040, 192)
-2. **A kernel split.** Same, for `x.softmax()`. How many kernels, and which value does each compute? Exercise 194 says three. (192, 194)
+2. **A kernel split.** `Tensor.rand(16, 64).softmax()`: how many kernels, and which value does each compute? Exercise 194 says three. Then try it on a single vector, `Tensor.rand(1024).softmax()`: tinygrad needs only two. Read the second kernel with `DEBUG=4 NOOPT=1` to see why. (192, 194)
 3. **Movement ops cost nothing.** `DEBUG=4`, `x.reshape(32, 32).permute(1, 0).contiguous().realize()`. Find the reshape and the permute in the C. They are only index maths. (073, 191)
 4. **Padding becomes a WHERE.** `DEBUG=4`, `x.pad((1, 1)).contiguous().realize()`. Find the condition. (014, 193)
 5. **A reduce is an accumulator.** `DEBUG=4`, `x.reshape(32, 32).sum(axis=1).realize()`. Which loop is the grid, which is the reduce? (076, 195, 208)
 6. **The matmul.** `DEBUG=4 NOOPT=1`, `(Tensor.rand(256, 256) @ Tensor.rand(256, 256)).realize()`. Compare with what your 195 renders. Then drop `NOOPT=1` and read it again with `DEBUG=3` to see the opts. (019, 195, 196, 197)
 7. **Search.** The same matmul with `BEAM=2 DEBUG=2`. How much faster than the default? Run it twice: the second run doesn't search. (200)
 8. **Floor division.** `(Tensor([-7]) // 2).tolist()` and `(Tensor([-7]) % 2).tolist()`. Then read the C with `DEBUG=4`: how does tinygrad get floor division out of C's truncating `/`? (158, 183)
-9. **Weak types.** `(Tensor([1, 2, 3], dtype=dtypes.int8) + 1).dtype`, then `+ 0.5`. (157, 181)
+9. **Weak types.** `(Tensor([1, 2, 3], dtype=dtypes.int8) + 1).dtype`, then `+ 0.5`. The second one is still weak. (157, 181)
 10. **UIR.** Print a graph in the course's text format, and read one back:
 
     ```python
