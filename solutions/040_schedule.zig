@@ -29,8 +29,9 @@
 //
 // (Real tinygrad is smarter than this rule: ops that only use a reduce's
 // final result can join the reduce's kernel, so this example is ONE
-// kernel there. But softmax, whose every element needs the max and then
-// the sum, still takes three kernels. The simple rule is where it starts.)
+// kernel there. But a softmax over a batch of rows, where every element
+// needs its row's max and then its row's sum, still takes three kernels.
+// The simple rule is where it starts.)
 //
 // YOUR TASK: finish isKernel() and collectInputs(). The tests count
 // kernels and bytes moved, fused vs. unfused.

@@ -58,6 +58,11 @@ test "halving until the step is good enough" {
     try std.testing.expectEqual(1.0 / 32.0, backtrack(.{ 1, 1 }, grad(.{ 1, 1 }), 0.5));
 }
 
+test "along the flat direction, the full step is fine" {
+    // at (0, 4) the gradient is (0, 4), and t = 1 lands exactly on the minimum
+    try std.testing.expectEqual(1.0, backtrack(.{ 0, 4 }, grad(.{ 0, 4 }), 0.5));
+}
+
 test "no learning rate to tune" {
     try std.testing.expect(descend(.{ 1, 1 }, 200, null) < 1e-6);
 }

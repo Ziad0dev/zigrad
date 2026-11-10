@@ -1,0 +1,82 @@
+# Mutants that survive tools/mutate.py because they mean the same thing as
+# the answer. One per line: `exercise | mutated answer`. Anything else that
+# survives is a gap in that exercise's tests.
+#
+# Swapped arguments of something symmetric (@max, dot, a product, ...):
+003_elementwise | @max(0, x)
+012_expand | @max(db, da)
+016_composites | P.max(0, x)
+016_composites | sub(P.mul(2, sigmoid(P.mul(x, 2))), 1)
+048_beam_search | @min(candidates.items.len, width)
+054_vectors | dot(b, a) / (norm(a) * norm(b))
+054_vectors | dot(b, a) / dot(b, b)
+096_losses | @max(0, z) - z * y + @log(1 + @exp(-@abs(z)))
+107_overlap | c + (n - 1) * @max(k, c) + k
+107_overlap | @max(compute_free, copy_done)
+154_bank_conflicts | @max(c, worst)
+165_littles_law | bytesInFlight(latency, bandwidth) / (loads * bytes)
+177_mfu | trainFlops(tokens, params) / (gpus * peak_flops * u)
+#
+# Averaged over a batch, (x + m)(x - m) = x² - m² gives the same variance as
+# (x - m)², since the mean of x is m:
+037_init | (x + mean) * (x - mean)
+037_init | (x - mean) * (x + mean)
+084_batchnorm | (x[r * bn.n + j] + mu) * (x[r * bn.n + j] - mu) / bf
+084_batchnorm | (x[r * bn.n + j] - mu) * (x[r * bn.n + j] + mu) / bf
+102_data_pipeline | (xs[i * pixels + p] + m) * (xs[i * pixels + p] - m)
+102_data_pipeline | (xs[i * pixels + p] - m) * (xs[i * pixels + p] + m)
+#
+# Which accumulator lane a number lands in: the lanes are summed at the end.
+045_upcast | acc[2] += x[i + 1]; acc[2] += x[i + 2]; acc[3] += x[i + 3];
+045_upcast | acc[1] += x[i + 1]; acc[3] += x[i + 2]; acc[3] += x[i + 3];
+045_upcast | acc[1] += x[i + 1]; acc[1] += x[i + 2]; acc[3] += x[i + 3];
+045_upcast | acc[1] += x[i + 1]; acc[2] += x[i + 2]; acc[2] += x[i + 3];
+045_upcast | acc[0] += x[i + 1]; acc[2] += x[i + 2]; acc[3] += x[i + 3];
+045_upcast | acc[1] += x[i];
+#
+# Equal in distribution: z is symmetric, and swapping the seed and the index
+# draws different, equally uniform, numbers:
+060_distributions | mu - sigma * z
+089_dropout | uniform(i, seed) >= p
+#
+# A tie between two random floats, which has probability zero:
+089_dropout | uniform(seed, i) > p
+126_bandits | rand.float(f64) <= a.epsilon
+#
+# Tolerances and epsilons a factor of 10 either way, or a tie at the
+# tolerance itself:
+131_convexity | f((a + b) / 2) >= (f(a) + f(b)) / 2 + 1e-12
+131_convexity | f((a + b) / 2) > (f(a) + f(b)) / 2 + 1e-13
+131_convexity | f((a + b) / 2) > (f(a) + f(b)) / 2 + 1e-11
+132_adagrad_rmsprop | o.lr * g / (@sqrt(o.g2) - 1e-8)
+132_adagrad_rmsprop | o.lr * g / (@sqrt(o.g2) + 1e-9)
+132_adagrad_rmsprop | o.lr * g / (@sqrt(o.g2) + 1e-7)
+#
+# Ties between equal types: rank(a) == rank(b) only when a == b.
+181_weak_dtypes | if (rank(a) > rank(b)) a else b
+#
+# Picking the max of distinct ranks: > and >= only differ for the node itself.
+199_linearize | order.get(u).? >= order.get(ready.items[best]).?
+#
+# BEAM: equal timings never happen, and min() is symmetric.
+200_beam_for_real | best.secs - scored.items[0].secs <= min_progress
+200_beam_for_real | @min(scored.items.len, width)
+# Any load priority between END's -5 and the default 0 gives the same order.
+199_linearize | -2
+# Checkpoints. @max is symmetric; node 0 is always an input, so skipping it changes nothing.
+c1_checkpoint_part_one | var biggest = x[0]; for (x) |v| biggest = @max(v, biggest); var total: f32 = 0; for (x, out) |v, *o| { o.* = @exp(v - biggest); total += o.*; } for (out) |*o| o.* /= total;
+c1_checkpoint_part_one | for (nodes) |*n| n.grad = 0; nodes[nodes.len - 1].grad = 1; var i = nodes.len; while (i > 1) { i -= 1; const n = nodes[i]; switch (n.op) { .input => {}, .add => { nodes[n.a].grad += n.grad; nodes[n.b].grad += n.grad; }, .mul => { nodes[n.a].grad += n.grad * nodes[n.b].value; nodes[n.b].grad += n.grad * nodes[n.a].value; }, .relu => { if (nodes[n.a].value > 0) nodes[n.a].grad += n.grad; }, } }
+# The sum of (v - mean)(v + mean) is the sum of v^2 - mean^2: the variance again.
+c2_checkpoint_part_two | const n: f64 = @floatFromInt(x.len); var mean: f64 = 0; for (x) |v| mean += v / n; var variance: f64 = 0; for (x) |v| variance += (v - mean) * (v + mean) / n; const inv_std = 1 / @sqrt(variance + eps); for (x, gamma, beta, y) |v, g, b, *o| o.* = g * (v - mean) * inv_std + b;
+# 17, 8, 4, 2, 1 still reaches every lane (17 = 16 XOR 1); a bigger scratch array is still big enough.
+c4_checkpoint_part_four | var offset: usize = 17; while (offset > 0) : (offset >>= 1) { const old = lanes.*; for (lanes, 0..) |*v, i| v.* += old[i ^ offset]; }
+c4_checkpoint_part_four | var kept = [_]bool{false} ** 65; var total: f64 = 0; var count: usize = 0; while (total < p and count < probs.len) { // the most likely token not kept yet var best: ?usize = null; for (probs, 0..) |v, i| { if (!kept[i] and (best == null or v > probs[best.?])) best = i; } kept[best.?] = true; total += probs[best.?]; count += 1; } for (probs, 0..) |*v, i| v.* = if (kept[i]) v.* / total else 0; return count;
+# Equal dtypes: either side is the answer. A flat index that starts at 1 is off by a multiple of the
+# whole size, which the MOD of every digit removes.
+c5_checkpoint_part_five | if (op == .cmplt or op == .cmpne) return .bool; return if (@intFromEnum(a) > @intFromEnum(b)) a else b;
+c5_checkpoint_part_five | var flat: usize = 1; for (out, out_shape) |i, n| flat = flat * n + i; var k = in_shape.len; while (k > 0) { k -= 1; in[k] = flat % in_shape[k]; flat /= in_shape[k]; }
+# relu(0) is 0 either way; a bigger shared array is still big enough; equal values tie either way.
+c6_checkpoint_part_six | const relu_kernel = \\KERNEL void relu(float *out, const float *x, int n) { \\ int i = blockIdx_x * blockDim_x + threadIdx_x; \\ if (i < n) out[i] = x[i] >= 0.0f ? x[i] : 0.0f; \\} \\ ;
+c6_checkpoint_part_six | const block_max_kernel = \\KERNEL void block_max(float *out, const float *x) { \\ static SHARED float sh[257]; \\ int tid = threadIdx_x; \\ sh[tid] = x[blockIdx_x * 256 + tid]; \\ __syncthreads(); \\ for (int s = 128; s > 0; s >>= 1) { \\ if (tid < s && sh[tid + s] > sh[tid]) sh[tid] = sh[tid + s]; \\ __syncthreads(); \\ } \\ if (tid == 0) out[blockIdx_x] = sh[0]; \\} \\ ;
+c6_checkpoint_part_six | const block_max_kernel = \\KERNEL void block_max(float *out, const float *x) { \\ static SHARED float sh[256]; \\ int tid = threadIdx_x; \\ sh[tid] = x[blockIdx_x * 256 + tid]; \\ __syncthreads(); \\ for (int s = 128; s > 0; s >>= 1) { \\ if (tid < s && sh[tid + s] >= sh[tid]) sh[tid] = sh[tid + s]; \\ __syncthreads(); \\ } \\ if (tid == 0) out[blockIdx_x] = sh[0]; \\} \\ ;
+c1_checkpoint_part_one | const n = @max(a.len, b.len); for (0..n) |k| { // k counts dimensions from the right const x = if (k < a.len) a[a.len - 1 - k] else 1; const y = if (k < b.len) b[b.len - 1 - k] else 1; if (x != y and x != 1 and y != 1) return null; out[n - 1 - k] = @max(y, x); } return out[0..n];

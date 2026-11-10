@@ -20,11 +20,12 @@
 //     memory time  = weight bytes / bandwidth          (per step)
 //     compute time = 2 * N * B / peak flops           (per step)
 //
-// They're equal at B = peak * bytes_per_weight / (2 * bandwidth): for f16,
-// just peak / bandwidth, a few hundred on modern GPUs. Below that, bigger
-// batches are almost free. That's why inference servers batch aggressively
-// (145), and why speculative decoding (144) works: checking several draft
-// tokens costs barely more than one.
+// Set the two equal and solve for B (N weights are N * bytes_per_weight
+// bytes): N cancels. For f16 it comes to just peak / bandwidth, a few
+// hundred on modern GPUs. Below that, bigger batches are almost free.
+// That's why inference servers batch aggressively (145), and why
+// speculative decoding (144) works: checking several draft tokens costs
+// barely more than one.
 //
 // (This ignores reading the KV cache, which grows with the context and
 // matters for long conversations, 145.)
@@ -65,6 +66,8 @@ test "batching is free until the crossover" {
     try std.testing.expectApproxEqRel(7e9 * 2 / bw, stepTime(7e9, 2, b, bw, peak), 1e-9);
     // batch 1 and batch 64 take the same time per step...
     try std.testing.expectEqual(stepTime(7e9, 2, 1, bw, peak), stepTime(7e9, 2, 64, bw, peak));
-    // ...but past the crossover the step gets slower
+    // ...but past the crossover the step gets slower: it's compute-bound now,
+    // 2 FLOPs per weight per sequence
     try std.testing.expect(stepTime(7e9, 2, 1000, bw, peak) > stepTime(7e9, 2, 64, bw, peak));
+    try std.testing.expectApproxEqRel(2 * 7e9 * 1000 / peak, stepTime(7e9, 2, 1000, bw, peak), 1e-9);
 }

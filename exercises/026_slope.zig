@@ -7,7 +7,7 @@
 // f(x) move, per unit of nudge?" Graphically, it's the slope of the curve
 // at x. You can measure it:
 //
-//     f'(x) ≈ (f(x + h) - f(x)) / h           for a tiny h
+//     f'(x) ≈ how far f moved / how far x moved, for a tiny nudge h
 //
 // For f(x) = x^2 at x = 3, with h = 0.001:
 //     (3.001^2 - 3^2) / 0.001 = (9.006001 - 9) / 0.001 = 6.001

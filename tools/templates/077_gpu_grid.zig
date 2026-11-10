@@ -11,7 +11,8 @@
 //         gid = block_id * threads_per_block + thread_id
 //
 // To cover n elements with blocks of size bs you need ceil(n / bs)
-// blocks, (n + bs - 1) / bs in integers. The last block usually has spare
+// blocks. Integer division rounds DOWN, so first add to n just enough
+// that any remainder tips it over. The last block usually has spare
 // threads, so kernels start with a guard: `if (gid >= n) return;`.
 //
 // Grids can be 2D (or 3D), which suits matrices: x picks the column and

@@ -1,0 +1,48 @@
+// HARD MODE (zig build -Dhard): no blanks to fill in. Every function
+// marked ??? has lost its whole body: write it, from its doc comment,
+// its signature and the tests. The gentler version of this file is in
+// exercises/, and the answer in solutions/.
+//
+// ─── Exercise 108: launch overhead and graphs ──────────────────────────
+//
+// Launching a kernel isn't free: the CPU builds the command, fills in
+// arguments, and rings the GPU's doorbell. Call it ~5 microseconds. For a
+// big matmul taking milliseconds, who cares. But generating text with a
+// small model, one token at a time, can mean hundreds of tiny kernels of
+// ~2 microseconds each, per token. Then the overhead IS the runtime.
+//
+//     plain:  every one of the n kernels pays for its own launch
+//     graph:  one launch for the whole batch, then the n kernels
+//
+// A *graph* is the whole list of kernels (with their arguments) recorded
+// once and submitted as a unit. CUDA calls them CUDA graphs. tinygrad's
+// JIT (051) captures the kernel list, and its HCQ queue layer (106) turns
+// it into one prebuilt batch of commands, submitted in one go. (Older
+// tinygrad called these "graph" runners, after CUDA graphs.)
+//
+// YOUR TASK: write both times and the speedup.
+//
+const std = @import("std");
+
+fn plainTime(n: f64, launch: f64, kernel: f64) f64 {
+    ???; // write this function's body
+}
+
+fn graphTime(n: f64, launch: f64, kernel: f64) f64 {
+    ???; // write this function's body
+}
+
+fn speedup(n: f64, launch: f64, kernel: f64) f64 {
+    ???; // write this function's body
+}
+
+test "tiny kernels: the graph wins big" {
+    // 500 kernels of 2 µs, 5 µs to launch each
+    try std.testing.expectApproxEqAbs(3500e-6, plainTime(500, 5e-6, 2e-6), 1e-12);
+    try std.testing.expectApproxEqAbs(1005e-6, graphTime(500, 5e-6, 2e-6), 1e-12);
+    try std.testing.expect(speedup(500, 5e-6, 2e-6) > 3.4);
+}
+
+test "big kernels: it hardly matters" {
+    try std.testing.expect(speedup(10, 5e-6, 10e-3) < 1.001);
+}

@@ -15,7 +15,7 @@
 // m + p - 1 slots, but each stage is busy for only m of them. The idle
 // slots are the *bubble*:
 //
-//     bubble fraction = (p - 1) / (m + p - 1)
+//     bubble fraction = a stage's idle slots / all the slots
 //
 // More micro-batches means a smaller bubble. (The GPipe paper, 2018.
 // Schedules like 1F1B interleave backward passes to also cut memory.)

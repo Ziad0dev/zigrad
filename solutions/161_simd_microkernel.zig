@@ -1,5 +1,6 @@
 // Reference solution. Try the exercise in exercises/ first:
 // struggling a bit is how this stuff sticks.
+//
 // ═══ PART IV: performance engineering and modern models ═══════════════
 //
 // Parts I-III built tinygrad and the maths. Part IV sharpens the tools a

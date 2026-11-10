@@ -11,8 +11,10 @@
 //          bits = 0x5f3759df - (bits >> 1)
 //      That alone is within about 3.5%.
 //
-//   2. refine with Newton's method (070) on f(y) = 1/y² - x:
-//          y = y * (1.5 - 0.5 * x * y * y)
+//   2. refine with Newton's method (070), y <- y - f(y) / f'(y), on
+//      f(y) = 1/y² - x, whose root is the y we want. Work the step out
+//      on paper: f'(y) = -2/y³, and everything simplifies to y times an
+//      expression with NO division in it, which is the whole point.
 //      Each step roughly doubles the correct digits.
 //
 // GPUs now have a hardware rsqrt instruction, but "a cheap guess, then a

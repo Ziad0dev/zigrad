@@ -1,0 +1,45 @@
+// HARD MODE (zig build -Dhard): no blanks to fill in. Every function
+// marked ??? has lost its whole body: write it, from its doc comment,
+// its signature and the tests. The gentler version of this file is in
+// exercises/, and the answer in solutions/.
+//
+// ─── Exercise 147: computing exp2 from scratch ─────────────────────────
+//
+// We've used @exp2 as a primitive since 015. But on some chips, or in
+// some backends, there's no such instruction, and the kernel must
+// compute it from + and *. tinygrad has exactly this code for backends
+// that lack them: xexp2, in tinygrad/codegen/decomp/transcendental.py,
+// next to xlog2 and xsin (much of that file is adapted from the SLEEF
+// math library). It does steps 1 to 3 below, with a polynomial whose
+// coefficients are tuned to minimize the worst-case error, instead of the
+// Taylor series we use.
+//
+// The standard recipe, *range reduction* then a *polynomial*:
+//
+//   1. split x = n + f, with n = round(x) an integer and f in [-0.5, 0.5]
+//   2. 2^x = 2^n * 2^f
+//   3. 2^n is free: it's just the float's exponent field (049). An f64
+//      with exponent bits (n + 1023) and zero fraction IS 2^n:
+//          bits = (n + 1023) << 52
+//   4. 2^f = e^(f ln 2), and on such a small range a short Taylor series
+//      is extremely accurate:
+//          e^y = 1 + y + y²/2! + y³/3! + ...     (each term = previous * y / k)
+//
+// Range reduction is the key idea: every hard function is made easy on a
+// small interval, and some identity maps the whole input range onto it.
+//
+// YOUR TASK: split x, build 2^n from bits, and sum the series.
+//
+const std = @import("std");
+
+fn exp2Approx(x: f64) f64 {
+    ???; // write this function's body
+}
+
+test "matches @exp2 to 12+ digits" {
+    var x: f64 = -60;
+    while (x < 60) : (x += 0.37) {
+        try std.testing.expectApproxEqRel(@exp2(x), exp2Approx(x), 1e-13);
+    }
+    try std.testing.expectEqual(1024, exp2Approx(10));
+}

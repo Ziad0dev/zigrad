@@ -93,6 +93,8 @@ test "the classic example" {
 
     // a pair's first token at the very end: there's no pair to merge there
     try std.testing.expectEqualSlices(u32, &.{ 9, 1 }, try merge(alloc, &.{ 1, 2, 1 }, .{ 1, 2 }, 9));
+    // but a whole pair at the very end is merged
+    try std.testing.expectEqualSlices(u32, &.{ 3, 9 }, try merge(alloc, &.{ 3, 1, 2 }, .{ 1, 2 }, 9));
 
     var back: std.ArrayList(u8) = .empty;
     for (tokens) |t| try decode(alloc, merges.items, t, &back);

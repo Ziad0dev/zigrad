@@ -201,6 +201,9 @@ test "signs flip" {
     try expectBounds(-6, 2, g.mul(g.variable("c", -3, 1), g.variable("d", 0, 2)));
     try expectBounds(2, 12, g.mul(g.variable("e", 1, 3), g.variable("f", 2, 4)));
     try expectBounds(2, 12, g.mul(g.variable("p", -3, -1), g.variable("q", -4, -2)));
+    // the two "mixed" corners, a.lo * b.hi and a.hi * b.lo, can win the max too
+    try expectBounds(-6, -1, g.mul(g.variable("s", 1, 2), g.variable("t", -3, -1)));
+    try expectBounds(-6, -1, g.mul(g.variable("u", -3, -1), g.variable("v", 1, 2)));
 }
 
 test "mod edge cases" {

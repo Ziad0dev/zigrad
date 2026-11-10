@@ -11,7 +11,8 @@ The best books, courses, videos, articles and papers to go with this course, gro
 - [tinygrad-notes](https://mesozoic-egg.github.io/tinygrad-notes/): a long series of community write-ups walking through tinygrad's internals. Many were written for older versions (with ShapeTracker), so check details against the current source. [chapters 8, 14, 15, 30]
 - [teenygrad](https://github.com/tinygrad/teenygrad): a sub-1000-line MNIST trainer sharing most of its code with (an older) tinygrad. A great next read after this course.
 - [george hotz archive](https://www.youtube.com/@geohotarchive/videos): recordings of George Hotz's live-coding streams, many of them building tinygrad. Try ["tinygrad refactoring + new tour"](https://www.youtube.com/watch?v=nyDGXlLp578) (2025), or the original ["a tiny tour through tinygrad"](https://www.youtube.com/watch?v=-MhwhiReY-s) (2022, a much older tinygrad).
-- [10-411: Compilers for Machine Learning (CMU, Spring 2027)](https://geohot.github.io/web10411/): George Hotz's course on building an ML compiler from scratch, from UOps and rewrites to GPUs and training LLMs. Its [technical syllabus](https://gist.github.com/geohot/4768597d9dc536446ee2d5de1f29e89d) specifies the UOps week by week. Both are drafts as of October 2026. The [final project](project/README.md) follows them. [chapters 4, 8, 14, 15, 30]
+- [10-411: Compilers for Machine Learning (CMU, Spring 2027)](https://10-411.com/): George Hotz's course on building an ML compiler from scratch, from UOps and rewrites to GPUs and training LLMs. Its [technical syllabus](https://gist.github.com/geohot/4768597d9dc536446ee2d5de1f29e89d) specifies the UOps week by week. Both are drafts that change often (checked November 2026). The [final project](project/README.md) follows them. [chapters 4, 8, 14, 15, 30, 35-40]
+- tinygrad's source, for Part V: [`tinygrad/uop/ops.py`](https://github.com/tinygrad/tinygrad/blob/master/tinygrad/uop/ops.py) (the UOp, its shape and dtype rules, `_min_max`), [`uop/uir.py`](https://github.com/tinygrad/tinygrad/blob/master/tinygrad/uop/uir.py) (UIR), [`schedule/indexing.py`](https://github.com/tinygrad/tinygrad/blob/master/tinygrad/schedule/indexing.py) and [`schedule/rangeify.py`](https://github.com/tinygrad/tinygrad/blob/master/tinygrad/schedule/rangeify.py) (rangeify), [`codegen/opt/postrange.py`](https://github.com/tinygrad/tinygrad/blob/master/tinygrad/codegen/opt/postrange.py) (OptOps), [`codegen/gpudims.py`](https://github.com/tinygrad/tinygrad/blob/master/tinygrad/codegen/gpudims.py), [`codegen/late/linearizer.py`](https://github.com/tinygrad/tinygrad/blob/master/tinygrad/codegen/late/linearizer.py), and [`renderer/ptx.py`](https://github.com/tinygrad/tinygrad/blob/master/tinygrad/renderer/ptx.py). Each Part V exercise names the function it mirrors. [chapters 35-38]
 - [micrograd](https://github.com/karpathy/micrograd): Karpathy's ~150-line scalar autograd engine, the idea behind exercises 030-031.
 
 ## Zig
@@ -82,9 +83,11 @@ The best books, courses, videos, articles and papers to go with this course, gro
 ## Performance, kernels and hardware
 
 - [Making Deep Learning Go Brrrr From First Principles (Horace He)](https://horace.io/brrr_intro.html): compute-bound vs memory-bound vs overhead-bound. Chapter 9's roofline, in prose. [chapters 9, 20]
-- [How to Optimize a CUDA Matmul Kernel (Simon Boehm)](https://siboehm.com/articles/22/CUDA-MMM): a naive matmul optimized step by step to near cuBLAS speed. Coalescing, shared memory, tiling, register blocking. [chapters 9, 15, 29]
+- [How to Optimize a CUDA Matmul Kernel (Simon Boehm)](https://siboehm.com/articles/22/CUDA-MMM): a naive matmul optimized step by step to near cuBLAS speed. Coalescing, shared memory, tiling, register blocking. [chapters 9, 15, 29, 40]
 - [GPU MODE lectures](https://github.com/gpu-mode/lectures): a community lecture series on GPU programming, from CUDA basics to Triton and FlashAttention.
-- [CUDA Programming Guide (NVIDIA)](https://docs.nvidia.com/cuda/cuda-programming-guide/index.html): the reference for GPU threads, blocks, shared memory and the memory model. It replaced the older CUDA C++ Programming Guide. [chapters 15, 20, 29]
+- [CUDA Programming Guide (NVIDIA)](https://docs.nvidia.com/cuda/cuda-programming-guide/index.html): the reference for GPU threads, blocks, shared memory and the memory model. It replaced the older CUDA C++ Programming Guide. [chapters 15, 20, 29, 39, 40]
+- [CUDA Driver API (NVIDIA)](https://docs.nvidia.com/cuda/cuda-driver-api/index.html): `cuModuleLoadData`, `cuLaunchKernel` and the rest of what exercise 201 calls, the same functions tinygrad's CUDA backend uses. [chapter 39]
+- [PTX ISA (NVIDIA)](https://docs.nvidia.com/cuda/parallel-thread-execution/index.html): the GPU's portable assembly. Its section on `mma.sync` matrix fragments is the source of exercise 205's layouts. [chapters 39, 40]
 - *Programming Massively Parallel Processors* (Hwu, Kirk, El Hajj): the standard textbook on GPU programming.
 - [What Every Programmer Should Know About Memory (Drepper)](https://people.freebsd.org/~lstewart/articles/cpumemory.pdf): caches, from the hardware up. [chapter 29]
 - [Anatomy of High-Performance Matrix Multiplication (Goto and van de Geijn, 2008)](https://dl.acm.org/doi/10.1145/1356052.1356053): the paper behind GotoBLAS and the microkernel design every fast CPU matmul still uses. [chapter 31]
@@ -129,7 +132,7 @@ The original papers behind the exercises, all free on arXiv. They're easier to r
 | [RoFormer (rotary embeddings)](https://arxiv.org/abs/2104.09864) (2021) | 093 |
 | [LoRA](https://arxiv.org/abs/2106.09685) (2021) | 059 |
 | [Training language models to follow instructions (InstructGPT, RLHF)](https://arxiv.org/abs/2203.02155) (2022) | 130 |
-| [FlashAttention](https://arxiv.org/abs/2205.14135) (2022) | 095 |
+| [FlashAttention](https://arxiv.org/abs/2205.14135) (2022) | 095, 206 |
 | [GPTQ](https://arxiv.org/abs/2210.17323) (2022) | 143 |
 | [Fast Inference via Speculative Decoding](https://arxiv.org/abs/2211.17192) (2022) | 144 |
 | [Training Compute-Optimal Large Language Models (Chinchilla)](https://arxiv.org/abs/2203.15556) (2022) | 178 |

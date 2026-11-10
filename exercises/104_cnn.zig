@@ -355,6 +355,23 @@ fn train(m: Cnn, rand: std.Random, xs: []const f64, ys: []const usize, epochs: u
     }
 }
 
+test "patches cut the right 3x3 windows" {
+    // two images whose pixel values say where they are: 100 * b + 8 * y + x
+    var xs: [2 * pixels]f64 = undefined;
+    for (0..2) |b| {
+        for (0..pixels) |p| xs[b * pixels + p] = @floatFromInt(100 * b + p);
+    }
+    var out: [2 * positions * 9]f64 = undefined;
+    patches(&xs, 2, &out);
+    // image 1, the window whose top-left corner is (y, x) = (2, 3)
+    const row = 1 * positions + 2 * side + 3;
+    for (0..3) |i| {
+        for (0..3) |j| {
+            try std.testing.expectEqual(@as(f64, @floatFromInt(100 + (2 + i) * 8 + (3 + j))), out[row * 9 + i * 3 + j]);
+        }
+    }
+}
+
 test "train a CNN on noisy digits" {
     var prng = std.Random.DefaultPrng.init(104);
     const rand = prng.random();

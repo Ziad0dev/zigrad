@@ -3,6 +3,8 @@
 //!
 //!   zig build                  check everything, in order
 //!   zig build -Dn=7            check only exercise 7
+//!   zig build -Dcheckpoint=2   check only checkpoint 2 (the from-memory review of Part II)
+//!   zig build -Dhard           the same course with no blanks: write whole functions
 //!   zig build -Dsolutions      check the reference solutions instead
 //!   zig build -Dfresh          recheck everything, even exercises that passed before
 //!
@@ -70,6 +72,7 @@ const exercises = [_]Exercise{
     .{ .file = "051_jit.zig", .hint = "A replay does what capture did, minus the schedule() call." },
     .{ .file = "052_compile.zig", .hint = "The comment shows the zig cc command. A C function pointer type needs callconv(.c), and arrays pass to [*] pointers directly." },
     .{ .file = "053_multi_device.zig", .hint = "The slice size must round UP, or the last elements get no device: integer division rounds down, so add something first. The last slice stops at n. The all-reduce writes the mean back into every slot." },
+    .{ .file = "c1_checkpoint_part_one.zig", .hint = "Each doc comment names the exercise that taught it. Read your own finished version, close it, then write the function from memory." },
     .{ .file = "054_vectors.zig", .hint = "Length is the square root of a vector dotted with itself. Cosine divides the dot product by both lengths." },
     .{ .file = "055_linear_maps.zig", .hint = "Row 1 of M·x mirrors row 0. In a product, entry [i][j] is row i of a dotted with column j of b." },
     .{ .file = "056_transpose.zig", .hint = "Element (i, j) of A moves to (j, i) of Aᵀ, which has `rows` columns. For Aᵀy, read A normally but add into out[j]." },
@@ -127,6 +130,7 @@ const exercises = [_]Exercise{
     .{ .file = "108_launch_overhead.zig", .hint = "Plain pays a launch per kernel, a graph pays one launch in total. Speedup is plain / graph." },
     .{ .file = "109_ring_allreduce.zig", .hint = "Reduce-scatter sends chunk (d - s) mod N and ADDS. All-gather sends chunk (d + 1 - s) mod N and COPIES. Add n_dev before subtracting so nothing goes negative." },
     .{ .file = "110_safetensors.zig", .hint = "The first 8 bytes are a little-endian u64. Raw data starts right after the header, and offsets count from there." },
+    .{ .file = "c2_checkpoint_part_two.zig", .hint = "solve: pick the biggest pivot in each column. Attention: token i only looks at tokens 0..i. AdamW: Adam step first, then decay the weight." },
     .{ .file = "111_rnn.zig", .hint = "Add W times the old hidden state and U times the input to the bias, then squash with tanh." },
     .{ .file = "112_bptt.zig", .hint = "Each line in the comment's loop maps straight to one hole. The gradient passed back is dpre times w." },
     .{ .file = "113_vanishing_gradients.zig", .hint = "Each step multiplies the gradient by w times tanh's slope, 1 - h^2. A linear RNN just multiplies by w, T times." },
@@ -177,6 +181,7 @@ const exercises = [_]Exercise{
     .{ .file = "158_strength_reduction.zig", .hint = "A power of two has one set bit: c & (c-1) == 0. Shifts need x >= 0 for division and modulo. The mask is c - 1." },
     .{ .file = "159_inplace.zig", .hint = "It's unsafe exactly when the kernel reads the target buffer at a nonzero offset." },
     .{ .file = "160_mini_tinygrad.zig", .hint = "Every hole matches an earlier exercise, named in the header. The gradient of sum is a broadcast of out[0], and the gradient of expand is a sum." },
+    .{ .file = "c3_checkpoint_part_three.zig", .hint = "Kahan: what did the last addition lose? (next - sum) - y. Q-learning moves q[s][a] a fraction lr of the way to r + gamma * best future." },
     .{ .file = "161_simd_microkernel.zig", .hint = "Broadcast one number of A to every lane with @splat, then @mulAdd(V, a, b, acc). At the end, store each row vector back into its 8 slots of C." },
     .{ .file = "162_threads.zig", .hint = "Chunks are ceil(n / t) rows, and the end is capped at n. std.Thread.spawn(.{}, Job.run, .{job}) returns a thread to join." },
     .{ .file = "163_false_sharing.zig", .hint = "A line is 64 bytes: divide the address. A line is shared when two or more threads write it. The padded stride is one whole line." },
@@ -197,6 +202,46 @@ const exercises = [_]Exercise{
     .{ .file = "178_scaling_laws.zig", .hint = "C = 6 N D and D = 20 N, so C = 120 N^2: N is the square root of C / 120." },
     .{ .file = "179_decode_speed.zig", .hint = "At batch 1 every token reads all the weights: bandwidth / weight bytes. Compute is 2 N B / peak; set it equal to the memory time and solve for B." },
     .{ .file = "180_transformer_block.zig", .hint = "q and k both get RoPE at the token's position (cache.len before appending). Bump cache.len after storing. Residuals add the sublayer's output to its input." },
+    .{ .file = "c4_checkpoint_part_four.zig", .hint = "warpSum and prefixSum both read OLD values within a step: copy first. top-p: keep taking the most likely token until the total reaches p." },
+    .{ .file = "181_weak_dtypes.zig", .hint = "A bare int is weakint, a bare float weakfloat. On a chain, the least upper bound is whichever type comes later. commit() picks tinygrad's defaults." },
+    .{ .file = "182_uop.zig", .hint = "STACK and EXPAND put new axes in FRONT; INDEX and REDUCE take axes off the front. Output axis i of a PERMUTE is old axis perm[i]. Comparisons always give bool." },
+    .{ .file = "183_alu.zig", .hint = "Zig has @divFloor. Python's % is defined from //: x - (x // y) * y. @truncate keeps the low bits; @floatCast rounds to f32." },
+    .{ .file = "184_call_param.zig", .hint = "Substitute each src, and only make a new UOp if one of them changed. PARAM slot i means argument i of the CALL." },
+    .{ .file = "185_vmin_vmax.zig", .hint = "A RANGE to n runs from 0 to n - 1. A WHERE can be either side. a < b is certain when even a's largest is below b's smallest, and impossible the other way round." },
+    .{ .file = "186_uir_parse.zig", .hint = "After a %name, skip spaces: a = makes it an assignment. A word followed directly by = is a key. ( starts an op, [ a STACK. Args come after srcs." },
+    .{ .file = "187_uir_print.zig", .hint = "Only CONSTs, and STACKs of nothing but CONSTs, are written in place. A float with no '.' or 'e' needs '.0'. pop=0 is the default, so it's left out." },
+    .{ .file = "188_uir_run.zig", .hint = "An index is in bounds when it's in [0, length). A STORE fits each value to the buffer's dtype. AFTER runs its deps first; END runs its body once per step of its loops." },
+    .{ .file = "189_uir_movement.zig", .hint = "EXPAND copies all of x once per position of the new axes. PERMUTE: input axis perm[i] gets output index i. PAD adds the offset to each index; SHRINK reads at index + offset." },
+    .{ .file = "190_tests_due_monday.zig", .hint = "Each bug hides somewhere: division needs a negative number, a permute 3 axes, a reduce a non-square shape, a pad an asymmetric offset, and AFTER a read after a write." },
+    .{ .file = "191_movement_on_ranges.zig", .hint = "Each case is one line of tinygrad's apply_movement_op: add the offset; route through perm; drop the leading ranges; subtract the offset and AND in the check; flatten, then unflatten." },
+    .{ .file = "192_rangeify_walk.zig", .hint = "One consumer: take its ranges. Consumers that disagree: realize, with fresh ranges. A REDUCE's popped axes need fresh ranges in front of out." },
+    .{ .file = "193_rangeify_lower.zig", .hint = "A realized value is read from its buffer with element(). A PAD's valid becomes a WHERE with 0. In kernel(), END the store over its loops, then AFTER the buffer on that END." },
+    .{ .file = "194_kernels_and_calls.zig", .hint = "Keep a buffer made from more than 3 buffers, or one holding a reduce that reads a buffer. Each buffer becomes the next PARAM slot; an AFTER is passed as the argument itself; ranges renumber from 0." },
+    .{ .file = "195_render_and_run.zig", .hint = "An INDEX into a PARAM prints as p<slot>[...]. A WHERE is C's ?:. A reduce line updates its accumulator; END opens one loop per range; a STORE prints its target first." },
+    .{ .file = "196_shift_to.zig", .hint = "A reduce range unrolls up to 32, any other upcasts up to 16. top = false: old * amt + new. top = true: new * (n / amt) + old." },
+    .{ .file = "197_expander.zig", .hint = "atLane() puts each lane's number in place of the range. The old reduce becomes lane u of the vector one: an INDEX. An unrolled reduce combines its lanes with its op, lane by lane." },
+    .{ .file = "198_gpudims.zig", .hint = "Merge dims i and i + 1 if their product fits slot i. Divide the dim by the divisor you found. Every index but the first wraps around its dim." },
+    .{ .file = "199_linearize.zig", .hint = "Loads go early: a negative priority. A key's first part is how many loops the node is inside. Take the ready node LATEST in the ideal order; a node is ready once its last user is placed." },
+    .{ .file = "200_beam_for_real.zig", .hint = "Set the chosen axis's field to the amount. Stop when the best improves by less than min_progress; keep at most `width` candidates." },
+    .{ .file = "c5_checkpoint_part_five.zig", .hint = "Leading axes: with `kept` elements left, element pos of x belongs to output pos % kept. A reshape is flatten, then unflatten." },
+    .{ .file = "201_cuda_driver.zig", .hint = "cuMemcpyHtoD wants a pointer and a byte count. Round the block count up. kernelParams holds a POINTER to each argument, in order." },
+    .{ .file = "202_gpu_roofline.zig", .hint = "Thread i reads element i * stride (as a long: it gets big). A copy reads and writes 4 bytes per element. An FMA is 2 FLOPs. The ridge is FLOPs per second over bytes per second." },
+    .{ .file = "203_gpu_reduce.zig", .hint = "Threads below s add in the value s places above them. The butterfly adds the value from lane XOR o." },
+    .{ .file = "204_gpu_gemm.zig", .hint = "Thread (tx, ty) loads A[row][kt*16 + tx] and B[kt*16 + ty][col]. Sync after loading, and again after computing. acc[r][c] gets a[r] * b[c]." },
+    .{ .file = "205_gpu_tensor_cores.zig", .hint = "Register r's row is g, plus 8 when r is odd; its column is 2q, plus 8 for r = 2 and 3. Each k step is one call of tile()." },
+    .{ .file = "206_gpu_flash_attention.zig", .hint = "The old sums shrink by exp(m - m_new). Then l gets the new weight p, and each acc gets p times its value from V." },
+    .{ .file = "207_gpu_conv.zig", .hint = "One side is (size + 2 pad - kernel) / stride + 1. On the CPU the index is shifted by one, so 0 means padding. Blocked: one input value v goes into all 8 accumulators." },
+    .{ .file = "208_compiler_to_gpu.zig", .hint = "gid is the block's first thread plus the thread's own index (077). A range is (gid / the sizes after it) % its own size. Each launch argument is a pointer to the u64 holding the address." },
+    .{ .file = "c6_checkpoint_part_six.zig", .hint = "A sector is 32 bytes, an f32 is 4. block_max: 203's tree, with a compare where the add was, and no atomic: each block has its own out[b]." },
+};
+
+/// How many of those are numbered exercises; the rest are checkpoints.
+const numbered = count: {
+    var n: usize = 0;
+    for (exercises) |ex| {
+        if (ex.file[0] != 'c') n += 1;
+    }
+    break :count n;
 };
 
 pub fn build(b: *std.Build) void {
@@ -204,7 +249,12 @@ pub fn build(b: *std.Build) void {
     check.* = .{
         .step = .init(.{ .id = .custom, .name = "check exercises", .owner = b, .makeFn = make }),
         .only = b.option(usize, "n", "Check only exercise number n"),
-        .dir = if (b.option(bool, "solutions", "Check the reference solutions") orelse false) "solutions" else "exercises",
+        .checkpoint = b.option(usize, "checkpoint", "Check only checkpoint number n"),
+        .dir = dir: {
+            const solutions = b.option(bool, "solutions", "Check the reference solutions") orelse false;
+            const hard = b.option(bool, "hard", "Hard mode: the exercises in hard/, where you write whole functions") orelse false;
+            break :dir if (solutions) "solutions" else if (hard) "hard" else "exercises";
+        },
         .fresh = b.option(bool, "fresh", "Recheck exercises that passed before") orelse false,
     };
     b.default_step.dependOn(&check.step);
@@ -213,6 +263,7 @@ pub fn build(b: *std.Build) void {
 const Check = struct {
     step: std.Build.Step,
     only: ?usize,
+    checkpoint: ?usize,
     dir: []const u8,
     fresh: bool,
 };
@@ -232,11 +283,18 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
     const p = std.debug.print;
 
     if (check.only) |n| {
-        if (n == 0 or n > exercises.len) {
-            p("There is no exercise {d}. Pick 1 to {d}.\n", .{ n, exercises.len });
+        if (n == 0 or n > numbered) {
+            p("There is no exercise {d}. Pick 1 to {d}.\n", .{ n, numbered });
             std.process.exit(2);
         }
     }
+    if (check.checkpoint) |c| {
+        if (c == 0 or c > exercises.len - numbered) {
+            p("There is no checkpoint {d}. Pick 1 to {d}.\n", .{ c, exercises.len - numbered });
+            std.process.exit(2);
+        }
+    }
+    const one = check.only != null or check.checkpoint != null;
 
     // Put this zig first on PATH, so exercises that run `zig cc` (052)
     // use the same compiler as the build.
@@ -257,15 +315,22 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
     var first_skipped: []const u8 = "";
     var last_skipped: []const u8 = "";
 
-    for (exercises, 1..) |ex, n| {
-        if (check.only) |only| if (only != n) continue;
+    for (exercises, 0..) |ex, done| {
+        if (one) {
+            // "017_..." is exercise 17, "c2_..." is checkpoint 2
+            const is_checkpoint = ex.file[0] == 'c';
+            const digits = if (is_checkpoint) ex.file[1..2] else ex.file[0..3];
+            const number = std.fmt.parseInt(usize, digits, 10) catch unreachable;
+            const wanted = if (is_checkpoint) check.checkpoint else check.only;
+            if (wanted == null or wanted.? != number) continue;
+        }
         const rel = b.pathJoin(&.{ check.dir, ex.file });
         const name = ex.file[0 .. ex.file.len - ".zig".len];
 
         const memo = b.pathJoin(&.{ memo_dir, name });
         const contents = b.build_root.handle.readFileAlloc(io, rel, b.allocator, .limited(1 << 24)) catch "";
         const print = fingerprint(contents);
-        if (!check.fresh and check.only == null) {
+        if (!check.fresh and !one) {
             const old = b.cache_root.handle.readFileAlloc(io, memo, b.allocator, .limited(64)) catch "";
             if (std.mem.eql(u8, old, &print)) {
                 if (skipped == 0) first_skipped = name;
@@ -279,8 +344,22 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
             skipped = 0;
         }
 
+        // A few exercises need extra flags for `zig test` (the GPU ones link
+        // libc, to load the driver). They say so in a line of the file:
+        // `// zig test flags: -lc`.
+        var argv: std.ArrayList([]const u8) = .empty;
+        try argv.appendSlice(b.allocator, &.{ b.graph.zig_exe, "test" });
+        const marker = "\n// zig test flags: ";
+        if (std.mem.indexOf(u8, contents, marker)) |at| {
+            const start = at + marker.len;
+            const end = std.mem.indexOfScalarPos(u8, contents, start, '\n') orelse contents.len;
+            var flags = std.mem.tokenizeScalar(u8, contents[start..end], ' ');
+            while (flags.next()) |flag| try argv.append(b.allocator, flag);
+        }
+        try argv.append(b.allocator, b.pathFromRoot(rel));
+
         const result = try std.process.run(b.allocator, b.graph.io, .{
-            .argv = &.{ b.graph.zig_exe, "test", b.pathFromRoot(rel) },
+            .argv = argv.items,
             .cwd = .{ .path = b.pathFromRoot(".") },
             .environ_map = &env,
         });
@@ -296,24 +375,32 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
         }
 
         p("  ✗ {s}\n\n{s}\n", .{ name, result.stderr });
-        if (check.only == null) p("Progress: {d}/{d} exercises done.\n", .{ n - 1, exercises.len });
+        if (!one) {
+            const width = 40;
+            const filled = done * width / exercises.len;
+            p("Progress: [", .{});
+            for (0..width) |i| p("{s}", .{if (i < filled) "█" else "░"});
+            p("] {d}/{d}\n", .{ done, exercises.len });
+        }
         p("Hint: {s}\n\n", .{ex.hint});
         p("Edit {s} and run `zig build` again.\n", .{rel});
+        if (std.mem.eql(u8, check.dir, "hard")) p("Too much for now? The fill-in version is exercises/{s}\n", .{ex.file});
         p("Really stuck? The answer is in solutions/{s}\n", .{ex.file});
         std.process.exit(2);
     }
 
     if (skipped > 0) printSkipped(skipped, first_skipped, last_skipped);
 
-    if (check.only == null) {
+    if (!one) {
         p(
             \\
-            \\All {d} exercises pass. From flat memory to transformers, from the
-            \\chain rule to tensor cores and warp shuffles: you've built every major
-            \\piece of tinygrad, the maths underneath it, and the hardware under that.
+            \\All {d} exercises and checkpoints pass. From flat memory to transformers, from the
+            \\chain rule to tensor cores and warp shuffles, from UIR through rangeify
+            \\to kernels running on your own GPU: you've built every major piece of
+            \\tinygrad, the maths underneath it, and the hardware under that.
             \\
-            \\Next: read tinygrad's own source (github.com/tinygrad/tinygrad). You'll
-            \\recognize it.
+            \\Next: read tinygrad's own source (github.com/tinygrad/tinygrad), and build
+            \\your own compiler: project/README.md. You'll recognize all of it.
             \\
         , .{exercises.len});
     }

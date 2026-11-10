@@ -11,9 +11,13 @@
 //     all positive     minimum
 //     all negative     maximum
 //     mixed signs      saddle
+//     a zero           inconclusive
 //
-// (A zero eigenvalue means the second derivative can't decide, and you'd
-// need higher derivatives. We leave that case out.)
+// A zero eigenvalue means the second derivative can't decide, and you'd
+// need higher derivatives: x² + y⁴ has a minimum at 0, x² + y³ doesn't,
+// and both have the Hessian | 2 0 |. So "not all positive" isn't enough
+//                           | 0 0 |
+// to call something a saddle.
 //
 // For a symmetric 2x2 Hessian | a b |, the eigenvalues have a closed form:
 //                             | b c |
@@ -30,7 +34,7 @@
 //
 const std = @import("std");
 
-const Kind = enum { minimum, maximum, saddle };
+const Kind = enum { minimum, maximum, saddle, inconclusive };
 
 fn eigenvalues(a: f64, b: f64, c: f64) [2]f64 {
     const mid = (a + c) / 2;
@@ -42,7 +46,8 @@ fn classify(a: f64, b: f64, c: f64) Kind {
     const l = eigenvalues(a, b, c);
     if (l[0] > 0) return .minimum;
     if (l[1] < 0) return .maximum;
-    return .saddle;
+    if (l[0] < 0 and l[1] > 0) return .saddle;
+    return .inconclusive;
 }
 
 test "eigenvalues" {
@@ -62,6 +67,9 @@ test "classifying critical points" {
     try std.testing.expectEqual(.saddle, classify(0, 1, 0)); //     2xy, a rotated saddle
     try std.testing.expectEqual(.minimum, classify(0.5, 0, 0.5)); // gently curved still counts
     try std.testing.expectEqual(.maximum, classify(-0.5, 0, -0.5));
+    // a flat direction: the test can't tell
+    try std.testing.expectEqual(.inconclusive, classify(2, 0, 0)); //  x² (+ y⁴? y³?)
+    try std.testing.expectEqual(.inconclusive, classify(-2, 0, 0)); // -x² (- y⁴? + y³?)
     // one gentle direction is still enough to make a saddle
     try std.testing.expectEqual(.saddle, classify(0.5, 0, -2));
     try std.testing.expectEqual(.saddle, classify(-0.5, 0, 2));

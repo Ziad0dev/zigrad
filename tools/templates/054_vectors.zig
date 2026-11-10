@@ -27,9 +27,9 @@
 //     measured on embeddings. And an attention score in a transformer
 //     (chapter 17) is a dot product between two vectors.
 //
-//   * projecting a onto b ("how much of a points along b?"):
-//
-//         proj = (dot(a, b) / dot(b, b)) * b
+//   * projecting a onto b ("how much of a points along b?") gives b,
+//     scaled by a's dot product with b, divided by b's dot product with
+//     itself (its squared length).
 //
 // YOUR TASK: write dot, norm, cosine and project.
 //

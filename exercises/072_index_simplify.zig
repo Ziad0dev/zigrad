@@ -360,4 +360,8 @@ test "ranges make things vanish" {
     try check(&g, "(b % 3)", g.add(g.mul(g.mod(b, g.c(3)), g.c(1)), g.c(0)), &.{b});
     // not simplifiable: b % 3 really can wrap
     try check(&g, "((b + 2) % 3)", g.mod(g.add(b, g.c(2)), g.c(3)), &.{b});
+    // not simplifiable either: c might be negative, and -2 % 8 is 6, not -2
+    const c = g.variable("c", -2, 3);
+    try check(&g, "(c % 8)", g.mod(c, g.c(8)), &.{c});
+    try check(&g, "(c // 8)", g.idiv(c, g.c(8)), &.{c});
 }

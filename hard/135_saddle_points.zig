@@ -1,0 +1,86 @@
+// HARD MODE (zig build -Dhard): no blanks to fill in. Every function
+// marked ??? has lost its whole body: write it, from its doc comment,
+// its signature and the tests. The gentler version of this file is in
+// exercises/, and the answer in solutions/.
+//
+// ─── Exercise 135: saddle points ───────────────────────────────────────
+//
+// Where the gradient is zero, you're at a *critical point*. In 1D that's
+// a minimum or a maximum. In more dimensions there's a third kind, a
+// *saddle*: up in one direction, down in another, like f(x, y) = x² - y².
+//
+// The Hessian's eigenvalues (058) tell them apart:
+//     all positive     minimum
+//     all negative     maximum
+//     mixed signs      saddle
+//     a zero           inconclusive
+//
+// A zero eigenvalue means the second derivative can't decide, and you'd
+// need higher derivatives: x² + y⁴ has a minimum at 0, x² + y³ doesn't,
+// and both have the Hessian | 2 0 |. So "not all positive" isn't enough
+//                           | 0 0 |
+// to call something a saddle.
+//
+// For a symmetric 2x2 Hessian | a b |, the eigenvalues have a closed form:
+//                             | b c |
+//     λ = (a + c)/2 ± sqrt( ((a - c)/2)^2 + b^2 )
+//
+// In high dimensions saddles vastly outnumber minima (every direction
+// would have to curve up for a minimum). Plain gradient descent slows to
+// a crawl near a saddle, but any tiny push along the downhill direction
+// grows exponentially (1 + lr * |λ| per step, 113's maths in reverse), so
+// noisy SGD escapes. That's partly why deep learning works despite
+// non-convexity (131).
+//
+// YOUR TASK: write the eigenvalues and the classification.
+//
+const std = @import("std");
+
+const Kind = enum { minimum, maximum, saddle, inconclusive };
+
+fn eigenvalues(a: f64, b: f64, c: f64) [2]f64 {
+    ???; // write this function's body
+}
+
+fn classify(a: f64, b: f64, c: f64) Kind {
+    ???; // write this function's body
+}
+
+test "eigenvalues" {
+    const l = eigenvalues(2, 1, 2);
+    try std.testing.expectApproxEqAbs(1.0, l[0], 1e-12);
+    try std.testing.expectApproxEqAbs(3.0, l[1], 1e-12);
+    // a != c: mid 2, radius sqrt(3^2 + 4^2) = 5
+    const m = eigenvalues(5, 4, -1);
+    try std.testing.expectApproxEqAbs(-3.0, m[0], 1e-12);
+    try std.testing.expectApproxEqAbs(7.0, m[1], 1e-12);
+}
+
+test "classifying critical points" {
+    try std.testing.expectEqual(.minimum, classify(2, 0, 2)); //    x² + y²
+    try std.testing.expectEqual(.maximum, classify(-2, 0, -2)); //  -x² - y²
+    try std.testing.expectEqual(.saddle, classify(2, 0, -2)); //    x² - y²
+    try std.testing.expectEqual(.saddle, classify(0, 1, 0)); //     2xy, a rotated saddle
+    try std.testing.expectEqual(.minimum, classify(0.5, 0, 0.5)); // gently curved still counts
+    try std.testing.expectEqual(.maximum, classify(-0.5, 0, -0.5));
+    // a flat direction: the test can't tell
+    try std.testing.expectEqual(.inconclusive, classify(2, 0, 0)); //  x² (+ y⁴? y³?)
+    try std.testing.expectEqual(.inconclusive, classify(-2, 0, 0)); // -x² (- y⁴? + y³?)
+    // one gentle direction is still enough to make a saddle
+    try std.testing.expectEqual(.saddle, classify(0.5, 0, -2));
+    try std.testing.expectEqual(.saddle, classify(-0.5, 0, 2));
+}
+
+test "gradient descent escapes a saddle, slowly" {
+    // f = x² - y², start almost exactly at the saddle
+    var x: f64 = 1;
+    var y: f64 = 1e-8;
+    for (0..60) |_| {
+        const gx = 2 * x;
+        const gy = -2 * y;
+        x -= 0.1 * gx;
+        y -= 0.1 * gy;
+    }
+    try std.testing.expect(@abs(x) < 1e-5); // x settled...
+    try std.testing.expect(@abs(y) > 1e-4); // ...y grew by 1.2^60, about 56,000x
+}
