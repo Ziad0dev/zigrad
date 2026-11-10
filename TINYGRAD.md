@@ -6,13 +6,23 @@ Everything here was checked against tinygrad's source and its own `docs/` at com
 
 ## Setup
 
+With Nix, there is nothing to install. This repository's dev shell (`nix develop`, or direnv) has tinygrad itself on `PYTHONPATH`, pinned to the commit above, plus what its backends need: clang for `CPU`, an LLVM library for `CUDA:PTX` and `CPU:LLVM`, and the paths to libc, LLVM and your NVIDIA driver's libcuda. From anywhere inside this repository:
+
+```sh
+DEV=CUDA:PTX DEBUG=2 python3 -c "from tinygrad import Tensor; (Tensor.rand(2048, 2048) @ Tensor.rand(2048, 2048)).realize()"
+```
+
+The shell only exists inside this directory: `cd` out and direnv unloads it, paths and all. To read or change tinygrad's source, clone it and put your clone first, `PYTHONPATH=/path/to/tinygrad:$PYTHONPATH`, still from this shell.
+
+Without Nix:
+
 ```sh
 git clone https://github.com/tinygrad/tinygrad.git
 cd tinygrad
 python3 -m pip install -e .
 ```
 
-tinygrad has no required dependencies beyond Python. With Nix, this repository's dev shell (`nix develop`, or direnv) already has what the backends below need: clang for `CPU`, an LLVM library for `CUDA:PTX` and `CPU:LLVM`, and the paths tinygrad needs to find libc, LLVM and your NVIDIA driver's libcuda. So on an NVIDIA machine, `DEV=CUDA:PTX python3 your_script.py` works from that shell with no CUDA toolkit installed.
+tinygrad has no required dependencies beyond Python.
 
 Pick a device with `DEV`:
 

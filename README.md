@@ -13,7 +13,7 @@ You need **Zig 0.16.0** ([download](https://ziglang.org/download/)).
 Or, with [Nix](https://nixos.org/download/) (flakes enabled), get it from the dev shell in this repo:
 
 ```sh
-nix develop               # zig 0.16.0 and python3, plus what real tinygrad needs (TINYGRAD.md)
+nix develop               # zig 0.16.0, python3, and real tinygrad ready to import (TINYGRAD.md)
 ```
 
 With [direnv](https://direnv.net/) (plus [nix-direnv](https://github.com/nix-community/nix-direnv) for caching), run `direnv allow` once in the repo and the shell loads by itself every time you `cd` in.
