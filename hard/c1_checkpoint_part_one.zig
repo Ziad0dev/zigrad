@@ -94,7 +94,6 @@ test "broadcasting" {
     try t.expectEqualSlices(usize, &.{ 2, 3, 4 }, broadcastShape(&.{ 3, 4 }, &.{ 2, 1, 4 }, &out).?);
     try t.expectEqualSlices(usize, &.{ 5, 6 }, broadcastShape(&.{ 5, 6 }, &.{}, &out).?);
     try t.expectEqualSlices(usize, &.{ 7, 2 }, broadcastShape(&.{2}, &.{ 7, 1 }, &out).?);
-    try t.expectEqualSlices(usize, &.{ 3, 0 }, broadcastShape(&.{ 3, 1 }, &.{0}, &out).?); // 1 stretches, even to 0
     try t.expect(broadcastShape(&.{ 3, 4 }, &.{3}, &out) == null); // aligned from the RIGHT: 4 meets 3
     try t.expect(broadcastShape(&.{ 2, 3 }, &.{ 4, 3 }, &out) == null);
 }

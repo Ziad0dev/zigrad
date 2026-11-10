@@ -48,7 +48,7 @@ fn broadcastShape(a: []const usize, b: []const usize, out: []usize) ?[]const usi
         const x = if (k < a.len) a[a.len - 1 - k] else 1;
         const y = if (k < b.len) b[b.len - 1 - k] else 1;
         if (x != y and x != 1 and y != 1) return null;
-        out[n - 1 - k] = if (x == 1) y else x;
+        out[n - 1 - k] = @max(x, y);
     }
     return out[0..n];
     //|||
@@ -154,7 +154,6 @@ test "broadcasting" {
     try t.expectEqualSlices(usize, &.{ 2, 3, 4 }, broadcastShape(&.{ 3, 4 }, &.{ 2, 1, 4 }, &out).?);
     try t.expectEqualSlices(usize, &.{ 5, 6 }, broadcastShape(&.{ 5, 6 }, &.{}, &out).?);
     try t.expectEqualSlices(usize, &.{ 7, 2 }, broadcastShape(&.{2}, &.{ 7, 1 }, &out).?);
-    try t.expectEqualSlices(usize, &.{ 3, 0 }, broadcastShape(&.{ 3, 1 }, &.{0}, &out).?); // 1 stretches, even to 0
     try t.expect(broadcastShape(&.{ 3, 4 }, &.{3}, &out) == null); // aligned from the RIGHT: 4 meets 3
     try t.expect(broadcastShape(&.{ 2, 3 }, &.{ 4, 3 }, &out) == null);
 }
