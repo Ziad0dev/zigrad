@@ -20,8 +20,8 @@
 //
 // The BARRIERs are essential. Threads don't run in perfect lockstep, so
 // without them thread 0 might read sh[stride] before the thread that owns
-// it has finished writing it, in the load or in the previous step. A barrier means
-// "nobody continues until everyone has arrived here".
+// it has finished writing it, in the load or in the previous step. A
+// barrier means "nobody continues until everyone has arrived here".
 //
 // The simulation below runs each "phase" (the code between barriers) for
 // every thread before moving on, which is what a barrier guarantees.

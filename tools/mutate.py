@@ -191,6 +191,9 @@ def changed_since(ref):
     names = subprocess.run(["git", "diff", "--name-only", ref, "--", "tools/templates"],
                            cwd=ROOT, capture_output=True, text=True, check=True).stdout.split()
     snippets = {pathlib.Path(n).stem for n in names if "/snippets/" in n}
+    # a changed template changes every later exercise that includes its exports
+    gen.exports()
+    snippets |= {name for name, owner in gen._export_owner.items() if f"tools/templates/{owner}" in names}
     picked = []
     for tpl in sorted(gen.TPL.glob("*.zig")):
         includes = set(re.findall(r"^\s*//@include (\S+)", tpl.read_text(), re.M))

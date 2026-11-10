@@ -65,7 +65,7 @@ Some habits that the research on learning supports, and that this format makes e
 - **Mix it up.** The checkpoints jumble their topics so that you have to work out *which* idea a problem needs. That is harder than a chapter where every exercise uses the idea you just read, and it is the skill you need in a real codebase.
 - **Break it on purpose.** After an exercise passes, change one thing (a `<` to a `<=`, an axis, a stride) and predict which test catches it. `tools/mutate.py` does this to the reference answers; 190 makes a game of it.
 
-These feel slower and harder than rereading. That is the point: the difficulty is what makes it stick. Background: [the worked-example and expertise-reversal effects](https://en.wikipedia.org/wiki/Worked-example_effect), [fading from examples to problems](https://faculty.engineering.asu.edu/mre/wp-content/uploads/sites/31/2020/02/1124_final.pdf), [retrieval, spacing and interleaving as "desirable difficulties"](https://edcog.pnb.mcmaster.ca/?p=1267), and [predicting before running (PRIMM)](https://static.teachcomputing.org/pedagogy/QR11-PRIMM.pdf).
+These feel slower and harder than rereading. That is the point: the difficulty is what makes it stick. Background: [the worked-example and expertise-reversal effects](https://en.wikipedia.org/wiki/Worked-example_effect), [retrieval, spacing and interleaving as "desirable difficulties"](https://edcog.pnb.mcmaster.ca/?p=1267), and [predicting before running (PRIMM)](https://static.teachcomputing.org/pedagogy/QR11-PRIMM.pdf).
 
 ## Learning paths
 

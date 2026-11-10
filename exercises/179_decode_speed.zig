@@ -22,10 +22,10 @@
 //
 // Set the two equal and solve for B (N weights are N * bytes_per_weight
 // bytes): N cancels. For f16 it comes to just peak / bandwidth, a few
-// hundred on modern GPUs. Below that, bigger
-// batches are almost free. That's why inference servers batch aggressively
-// (145), and why speculative decoding (144) works: checking several draft
-// tokens costs barely more than one.
+// hundred on modern GPUs. Below that, bigger batches are almost free.
+// That's why inference servers batch aggressively (145), and why
+// speculative decoding (144) works: checking several draft tokens costs
+// barely more than one.
 //
 // (This ignores reading the KV cache, which grows with the context and
 // matters for long conversations, 145.)
