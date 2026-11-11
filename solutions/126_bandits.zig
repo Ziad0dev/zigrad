@@ -35,6 +35,8 @@ const Agent = struct {
     n: [arms]f64 = @splat(0),
     epsilon: f64,
 
+    /// ε-greedy: with probability ε, a random arm; otherwise the arm with
+    /// the best estimate, the lowest-numbered one when estimates tie.
     fn choose(a: Agent, rand: std.Random) usize {
         if (rand.float(f64) < a.epsilon) return rand.uintLessThan(usize, arms);
         var best: usize = 0;
@@ -72,8 +74,9 @@ test "ε-greedy finds the best arm" {
 }
 
 test "pure greed can get stuck" {
-    // with ε = 0 and all estimates starting at 0, the agent keeps pulling
-    // whatever first paid off, and never tries the rest
+    // With ε = 0 and all estimates starting at 0, every arm ties, so the
+    // agent pulls arm 0. It pays off, its estimate goes above 0, and the
+    // agent never has a reason to try anything else.
     var prng = std.Random.DefaultPrng.init(1);
     const rand = prng.random();
     var a: Agent = .{ .epsilon = 0 };

@@ -25,6 +25,8 @@ const std = @import("std");
 
 const Pt = [2]f64;
 
+/// Overwrites cov with (1/n) Σ x xᵀ over the points (which are already
+/// centred: mean 0).
 fn covariance(pts: []const Pt, cov: *[2][2]f64) void {
     cov.* = @splat(@splat(0));
     const n: f64 = @floatFromInt(pts.len);

@@ -47,7 +47,10 @@ fn columnShard(x: []const f64, w: []const f64, m: usize, k: usize, n: usize, d: 
     }
 }
 
-/// Device d's partial y from its rows of W and its slice of x; out is [m, n].
+/// Device d's partial y, from its k/N rows of W and the matching k/N
+/// columns of x; out is [m, n]. x and W are passed WHOLE (x [m, k],
+/// W [k, n]), as in columnShard: device d uses rows d*k/N up to
+/// (d+1)*k/N of W, and the same columns of x.
 fn rowShard(x: []const f64, w: []const f64, m: usize, k: usize, n: usize, d: usize, out: []f64) void {
     const rows = k / n_dev;
     for (0..m) |i| {

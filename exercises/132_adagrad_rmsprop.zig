@@ -80,4 +80,13 @@ test "both ignore the gradient's scale" {
         _ = big.step(&b, 1000);
     }
     try std.testing.expectApproxEqRel(a, b, 1e-4);
+    var small_ada: Adagrad = .{ .lr = 0.1 };
+    var big_ada: Adagrad = .{ .lr = 0.1 };
+    a = 0;
+    b = 0;
+    for (0..50) |_| {
+        _ = small_ada.step(&a, 0.001);
+        _ = big_ada.step(&b, 1000);
+    }
+    try std.testing.expectApproxEqRel(a, b, 1e-4);
 }
