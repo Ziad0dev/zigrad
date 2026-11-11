@@ -75,4 +75,14 @@ test "a run of good steps grows the scale" {
     try std.testing.expectEqual(1024, s.scale);
     try std.testing.expect(s.update(&ok));
     try std.testing.expectEqual(2048, s.scale);
+    // "in a row": an overflow starts the count again
+    const bad = [_]f16{ 0.1, std.math.inf(f16) };
+    try std.testing.expect(s.update(&ok));
+    try std.testing.expect(s.update(&ok));
+    try std.testing.expect(!s.update(&bad)); // 2048 halves to 1024
+    try std.testing.expect(s.update(&ok));
+    try std.testing.expect(s.update(&ok));
+    try std.testing.expectEqual(1024, s.scale); // only two good steps since
+    try std.testing.expect(s.update(&ok));
+    try std.testing.expectEqual(2048, s.scale);
 }

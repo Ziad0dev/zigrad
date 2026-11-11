@@ -80,7 +80,7 @@ test "Adam turns a tiny penalty into a full-size step" {
     try std.testing.expectApproxEqAbs(0.095, w, 1e-4); // moved by lr = 0.1, right past 0
 }
 
-test "with SGD they'd be the same" {
+test "on paper: with SGD the two would be the same" {
     const lr = 0.1;
     const wd = 0.01;
     const g = 0.5;

@@ -6,7 +6,12 @@
 // One fixed learning rate is rarely best. Real training varies it:
 //
 //   WARMUP: start tiny and ramp up linearly for the first few hundred
-//   steps. At the start the weights are random, gradients are wild, and
+//   steps. Counting steps from 0, step t of the warmup uses
+//
+//       lr = lr_max * (t + 1) / warmup
+//
+//   so the very first step isn't wasted with lr = 0, and the last
+//   warmup step (t = warmup - 1) already reaches lr_max. At the start the weights are random, gradients are wild, and
 //   Adam's second-moment estimate (038) is still unreliable. Big steps
 //   then can wreck a model before it has learned anything.
 //

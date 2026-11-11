@@ -63,7 +63,9 @@ fn features(x: f64, degree: usize, out: []f64) void {
     ???; // write this function's body
 }
 
-/// Least squares with an L2 penalty λ. Returns the coefficients.
+/// Least squares with an L2 penalty λ: fits a polynomial of `degree`
+/// (at most 9) and writes its degree + 1 coefficients into `w`, the
+/// constant term first.
 fn fit(xs: []const f64, ys: []const f64, degree: usize, lambda: f64, w: []f64) void {
     ???; // write this function's body
 }
@@ -129,4 +131,8 @@ test "ridge by hand: the penalty pulls the weights toward zero" {
     fit(&.{ 0, 1 }, &.{ 1, 3 }, 1, 1, &w);
     try std.testing.expectApproxEqAbs(1, w[0], 1e-12);
     try std.testing.expectApproxEqAbs(1, w[1], 1e-12);
+    // lambda = 2: [[4, 1], [1, 3]] w = [4, 3], so w = [9/11, 8/11]
+    fit(&.{ 0, 1 }, &.{ 1, 3 }, 1, 2, &w);
+    try std.testing.expectApproxEqAbs(9.0 / 11.0, w[0], 1e-12);
+    try std.testing.expectApproxEqAbs(8.0 / 11.0, w[1], 1e-12);
 }

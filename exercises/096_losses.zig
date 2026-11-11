@@ -43,6 +43,10 @@ test "Huber: squared inside, linear outside" {
     try std.testing.expectApproxEqAbs(2.5, huber(-3, 1), 1e-12);
     // continuous at the joint
     try std.testing.expectApproxEqAbs(huber(1 - 1e-9, 1), huber(1 + 1e-9, 1), 1e-8);
+    // a wider delta: quadratic out to 2, then a straight line
+    try std.testing.expectApproxEqAbs(2.0, huber(2, 2), 1e-12);
+    try std.testing.expectApproxEqAbs(4.0, huber(3, 2), 1e-12); // 2 * (3 - 1)
+    try std.testing.expectApproxEqAbs(huber(2 - 1e-9, 2), huber(2 + 1e-9, 2), 1e-8);
 }
 
 test "BCE with logits matches the naive formula where that works" {

@@ -74,7 +74,16 @@ test "training mode normalizes each feature over the batch" {
         var m: f64 = 0;
         for (0..4) |r| m += y[r * 2 + j] / 4;
         try std.testing.expectApproxEqAbs(0.0, m, 1e-9);
+        var v: f64 = 0;
+        for (0..4) |r| v += y[r * 2 + j] * y[r * 2 + j] / 4;
+        try std.testing.expectApproxEqAbs(1.0, v, 1e-4); // (eps keeps it a hair under 1)
     }
+    // and the running averages took one step of 10% towards the batch's
+    // statistics: means 2.5 and 250, variances 1.25 and 12500
+    try std.testing.expectApproxEqAbs(0.25, rm[0], 1e-12);
+    try std.testing.expectApproxEqAbs(25.0, rm[1], 1e-12);
+    try std.testing.expectApproxEqAbs(0.9 + 0.125, rv[0], 1e-12);
+    try std.testing.expectApproxEqAbs(0.9 + 1250, rv[1], 1e-9);
 }
 
 test "running averages learn the data's statistics" {
