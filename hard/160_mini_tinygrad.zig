@@ -183,6 +183,10 @@ pub const Tensor = struct {
         return out;
     }
 
+    /// Before t's kernel runs: realize every sum it reads, however deep
+    /// in its fused elementwise sources the sum is (an add of an expand
+    /// of a sum still needs that sum's value). Sources that already
+    /// have a buffer are done.
     fn realizeDeps(t: *Tensor) void {
         ???; // write this function's body
     }
@@ -481,6 +485,20 @@ test "an elementwise chain is one kernel, a reduce adds one" {
 
     try testing.expectEqual(-18, y.mean().realize()[0] * 3);
     try testing.expectEqual(3, g.kernels_run);
+}
+
+test "a sum read inside a fused kernel, and its gradient" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    var g = Graph.init(arena.allocator());
+    var x = [_]f32{ 1, 2, 3 };
+    // f(x) = mean(x * expand(sum(x))) = (x0 + x1 + x2)^2 / 3, so
+    // f = 36 / 3 = 12, and every df/dxi = 2 * 6 / 3 = 4
+    const xt = g.fromSlice("x", &x);
+    const loss = xt.mul(xt.sum().expand(3)).mean();
+    loss.backward();
+    try testing.expectEqual(12, loss.realize()[0]);
+    try testing.expectEqualSlices(f32, &.{ 4, 4, 4 }, xt.grad.?);
 }
 
 test "gradients match finite differences" {

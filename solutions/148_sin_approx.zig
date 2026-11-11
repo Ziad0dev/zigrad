@@ -43,6 +43,8 @@ fn sinApprox(x: f64) f64 {
 test "matches @sin" {
     var x: f64 = -50;
     while (x < 50) : (x += 0.113) {
-        try std.testing.expectApproxEqAbs(@sin(x), sinApprox(x), 1e-12);
+        // within 1e-14: 11 terms reach that on [-π/2, π/2], not on [-π, π]
+        // (out there they are off by about 1.6e-13), so the fold matters
+        try std.testing.expectApproxEqAbs(@sin(x), sinApprox(x), 1e-14);
     }
 }

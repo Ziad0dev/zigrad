@@ -49,8 +49,13 @@ test "int8 matmul is close to the float one" {
     const n = 4;
     var a: [m * k]f32 = undefined;
     var b: [k * n]f32 = undefined;
-    for (&a, 0..) |*v, i| v.* = @sin(@as(f32, @floatFromInt(i)) * 0.7) * 2;
-    for (&b, 0..) |*v, i| v.* = @cos(@as(f32, @floatFromInt(i)) * 1.3);
+    // Rows of A and columns of B of very different sizes (row i is about
+    // 10^i times bigger than row 0): one scale for all of them would
+    // round the small ones away, which is why each gets its own.
+    const row_size = [m]f32{ 0.01, 1, 100 };
+    const col_size = [n]f32{ 0.05, 1, 20, 0.5 };
+    for (&a, 0..) |*v, i| v.* = @sin(@as(f32, @floatFromInt(i)) * 0.7) * row_size[i / k];
+    for (&b, 0..) |*v, i| v.* = @cos(@as(f32, @floatFromInt(i)) * 1.3) * col_size[i % n];
 
     var exact: [m * n]f32 = undefined;
     for (0..m) |i| {
@@ -69,5 +74,9 @@ test "int8 matmul is close to the float one" {
     quantizeCols(&b, k, n, &qb, &sb);
     var got: [m * n]f32 = undefined;
     int8Matmul(&qa, &sa, &qb, &sb, m, k, n, &got);
-    for (exact, got) |e, g| try std.testing.expectApproxEqAbs(e, g, 0.1);
+    // each answer within 2% of what its row and column could add up to
+    for (exact, got, 0..) |e, g, idx| {
+        const most = row_size[idx / n] * col_size[idx % n] * k;
+        try std.testing.expectApproxEqAbs(e, g, 0.02 * most);
+    }
 }

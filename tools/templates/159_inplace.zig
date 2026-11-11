@@ -86,3 +86,13 @@ test "reading a neighbour is not" {
     try std.testing.expectEqualSlices(f64, &.{ 1, 2, 2, 2 }, &b); // the right answer
     try std.testing.expect(!std.mem.eql(f64, &a, &b)); // in place got it wrong
 }
+
+test "a neighbour on the other side is no safer" {
+    // y[i] = x[i + 1] + x[i]. Run in order, front to back, each x[i + 1]
+    // is read before it is overwritten, so the CPU loop above happens to
+    // get it right. A GPU runs every i at once, in no order at all, and
+    // thread i + 1 may well have written first.
+    const ahead = [_]Read{ .{ .buffer = 0, .offset = 1 }, .{ .buffer = 0, .offset = 0 } };
+    try std.testing.expect(!inPlaceSafe(&ahead, 0));
+    try std.testing.expect(inPlaceSafe(&ahead, 1));
+}

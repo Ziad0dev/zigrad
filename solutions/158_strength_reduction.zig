@@ -89,6 +89,10 @@ test "negative x: division is left alone, because a shift would be wrong" {
     try std.testing.expectEqual(.div, reduce(e).op);
     // proof that it had to be: -7 / 2 = -3 in C, but -7 >> 1 = -4
     try std.testing.expect(!sameEverywhere(e, .{ .op = .shr, .c = 1, .lo = -10, .hi = 10 }));
+    // the same goes for the remainder: -7 % 8 = -7 in C, but -7 & 7 = 1
+    const m: Expr = .{ .op = .mod, .c = 8, .lo = -10, .hi = 10 };
+    try std.testing.expectEqual(.mod, reduce(m).op);
+    try std.testing.expect(!sameEverywhere(m, .{ .op = .band, .c = 7, .lo = -10, .hi = 10 }));
     // multiplication is fine for any sign
     try std.testing.expectEqual(.shl, reduce(.{ .op = .mul, .c = 4, .lo = -10, .hi = 10 }).op);
 }
