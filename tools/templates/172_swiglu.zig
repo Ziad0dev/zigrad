@@ -15,7 +15,7 @@
 // is SiLU (also called Swish):
 //
 //     silu(z)  = z * σ(z)                      (σ is sigmoid, 016)
-//     silu'(z) = σ(z) * (1 + z * (1 - σ(z)))   (product rule, 028)
+//     silu'(z) = σ(z) * (1 + z * (1 - σ(z)))   (the product rule, (fg)' = f'g + fg', as in 029)
 //
 // SiLU is smooth everywhere, unlike ReLU's corner at 0, and lets a little
 // negative signal through.

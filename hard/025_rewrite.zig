@@ -31,7 +31,10 @@
 //   3. try every rule on it. If one fires, take the replacement and try
 //      the rules again. Stop when no rule matches.
 //
-//     (x * 1 + 0) * (2 + 3)   ->   (x + 0) * 5   ->   x * 5
+//     (x * 1 + 0) * (2 + 3)  ->  (x + 0) * (2 + 3)  ->  x * (2 + 3)  ->  x * 5
+//
+// (the left side first, all the way down, then the right side, then
+// the node itself)
 //
 // YOUR TASK: write mulOne(), mulZero() and the heart of fold().
 //

@@ -43,6 +43,7 @@ const Key = struct {
 const Graph = struct {
     alloc: std.mem.Allocator,
     cache: std.AutoHashMap(Key, *const Node),
+    /// How many nodes new() has really made (not found in the cache).
     created: usize = 0,
 
     fn new(g: *Graph, op: Op, src: []const *const Node, value: f32) *const Node {
@@ -84,6 +85,10 @@ test "same recipe, same node" {
 
     try std.testing.expect(g.constant(2) == g.constant(2));
     try std.testing.expect(g.constant(2) != g.constant(3));
+    // the whole value counts, not just its whole-number part
+    try std.testing.expect(g.constant(2.5) != g.constant(2));
+    try std.testing.expect(g.constant(-1.5) == g.constant(-1.5));
+    try std.testing.expect(g.constant(-1.5) != g.constant(1.5));
 
     const x = g.constant(2);
     const y = g.constant(3);

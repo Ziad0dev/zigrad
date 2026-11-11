@@ -72,12 +72,13 @@ fn loss(a: []const f64, b: []const f64, r: []const f64, m: usize, k: usize, n: u
 }
 
 test "matches measured slopes" {
+    // three different sizes, so that no two can be mixed up
     const m = 2;
     const k = 3;
-    const n = 2;
+    const n = 4;
     var a = [_]f64{ 1, -2, 0.5, 3, 0, -1 };
-    var b = [_]f64{ 2, 1, -1, 0.5, 4, -3 };
-    const r = [_]f64{ 1, -1, 2, 0.5 }; // plays the role of dC
+    var b = [_]f64{ 2, 1, -1, 0.5, 4, -3, 0.25, 2, -0.5, 1.5, 3, -2 };
+    const r = [_]f64{ 1, -1, 2, 0.5, -3, 0.75, 1.5, -2 }; // plays the role of dC
 
     var da: [m * k]f64 = undefined;
     var db: [k * n]f64 = undefined;

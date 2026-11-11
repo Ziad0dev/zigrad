@@ -15,7 +15,8 @@
 //     Var(y) = n * Var(x) * Var(w)
 //
 // With n = 256 inputs and Var(w) = 1, each layer makes the numbers 256
-// times bigger (in variance). Ten layers: 256^10. Everything overflows.
+// times bigger (in variance). Ten layers: 256^10, about 10^24. The
+// numbers are astronomically large, and the gradients with them.
 // Make the weights too small and everything shrinks to 0 instead. Either
 // way, nothing trains.
 //

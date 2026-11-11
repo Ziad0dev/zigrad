@@ -13,7 +13,9 @@
 // Each operation updates both parts, using rules you already know:
 //
 //     (a + b).deriv = a.deriv + b.deriv
-//     (a * b).deriv = the product rule (027), on values and derivs
+//     (a * b).deriv = a.deriv * b.value + a.value * b.deriv
+//                     (the product rule: when both factors move, each
+//                     one's motion is scaled by the other)
 //     sin(a).deriv  = the chain rule (028): sin's own derivative, at
 //                     a.value, times a.deriv
 //     exp(a).deriv  = the chain rule again, for exp
