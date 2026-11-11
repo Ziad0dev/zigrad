@@ -60,6 +60,10 @@ test "the normal density" {
     // the peak of a standard normal is 1 / sqrt(2π) ≈ 0.3989
     try std.testing.expectApproxEqAbs(0.398942, @exp(gaussianLogPdf(0, 0, 1)), 1e-6);
     try std.testing.expectApproxEqAbs(0.241971, @exp(gaussianLogPdf(1, 0, 1)), 1e-6);
+    // a wider one: twice the spread, half the height, at a shifted mean
+    try std.testing.expectApproxEqAbs(0.199471, @exp(gaussianLogPdf(3, 3, 2)), 1e-6);
+    try std.testing.expectApproxEqAbs(0.1209855, @exp(gaussianLogPdf(5, 3, 2)), 1e-6);
+    try std.testing.expectApproxEqAbs(1.595769, @exp(gaussianLogPdf(-1, -1, 0.25)), 1e-6);
 }
 
 test "Gaussian NLL is squared error in disguise" {

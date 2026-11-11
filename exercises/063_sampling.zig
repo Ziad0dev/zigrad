@@ -52,7 +52,9 @@ fn sample(p: []const f64, u: f64) usize {
     return p.len - 1; // rounding: u was just below 1
 }
 
-/// Zero out everything but the k largest, and renormalize.
+/// Zero out everything smaller than the k-th largest, and renormalize.
+/// (Ties with the k-th largest are kept, so more than k can survive:
+/// [0.4, 0.2, 0.2, 0.2] with k = 2 keeps all four.)
 fn topK(p: []f64, k: usize) void {
     var sorted: [64]f64 = undefined;
     @memcpy(sorted[0..p.len], p);
