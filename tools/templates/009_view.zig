@@ -29,8 +29,8 @@
 // tinygrad's Tensor has a method with the same name.
 //
 // Zig notes:
-//   * strides and offset are `isize` (signed) because in exercise 013
-//     they go negative. `@intCast` converts between integer types (and
+//   * strides and offset are `isize` (signed) because they go negative:
+//     strides in exercise 013 (flip), the offset in 014 (pad). `@intCast` converts between integer types (and
 //     crashes in debug builds if the value doesn't fit).
 //   * A View holds fixed-size arrays, so it's a small value you can copy
 //     around freely, just like tinygrad's (immutable) views.

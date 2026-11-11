@@ -18,7 +18,8 @@
 // How many numbers does a shape hold? Multiply the sizes:
 // [4, 2, 3] holds 4 * 2 * 3 = 24.
 //
-// YOUR TASK: numel() below is wrong for EVERY shape. Find out why.
+// YOUR TASK: numel() below is wrong for every shape that has any
+// numbers in it. Find out why.
 // Then think about the scalar, shape []: what's the product of no numbers
 // at all? (Hint: the sum of no numbers is 0, the identity of +. What's
 // the identity of *?)
@@ -26,7 +27,9 @@
 const std = @import("std");
 
 fn numel(shape: []const usize) usize {
-    ???; // write this function's body
+    var n: usize = 0;
+    for (shape) |d| n *= d;
+    return n;
 }
 
 /// The number of dimensions. tinygrad calls this `ndim`.

@@ -129,6 +129,16 @@ def functions(lines: list[str]) -> list[tuple[int, int]]:
     return out
 
 
+def planted_bug(lines: list[str], h: int) -> bool:
+    """Whether the hole starting on line h shows the student a wrong
+    answer to find (⟪1|||0⟫), rather than a blank to fill in."""
+    if lines[h].strip() == "//⟪":
+        j = next(i for i in range(h, len(lines)) if lines[i].strip() == "//|||")
+        k = next(i for i in range(j, len(lines)) if lines[i].strip() == "//⟫")
+        return "???" not in "".join(lines[j + 1 : k])
+    return any("???" not in m.group(2) for m in INLINE.finditer(lines[h]))
+
+
 def harden(text: str) -> str:
     """The template with the body of each function that has a hole replaced
     by one hole. Holes outside functions (in tests, in constants) stay."""
@@ -136,14 +146,18 @@ def harden(text: str) -> str:
     lines = own.splitlines(keepends=True)
     is_hole = [("⟪" in l or l.strip() in ("//|||", "//⟫")) for l in lines]
     fns = functions(lines)
-    chosen = set()
+    chosen, keep = set(), set()
     for h in (i for i, x in enumerate(is_hole) if x and "⟪" in lines[i]):
         inside = [(a, b) for a, b in fns if a < h < b]
         if not inside:
             continue
         a, b = max(inside)  # the innermost: the one that starts last
-        if b - a - 1 <= HARD_MAX_BODY:
+        if planted_bug(lines, h):
+            # "find the bug in this function" needs the function: keep it
+            keep.add((a, b))
+        elif b - a - 1 <= HARD_MAX_BODY:
             chosen.add((a, b))
+    chosen -= keep
     out, skip_to = [], -1
     for i, line in enumerate(lines):
         if i < skip_to:

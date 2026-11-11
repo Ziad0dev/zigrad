@@ -34,7 +34,21 @@
 const std = @import("std");
 
 fn softmax(x: []const f32, out: []f32) void {
-    ???; // write this function's body
+    // 1. the biggest logit
+    var m: f32 = -std.math.inf(f32);
+    for (x) |v| m = @max(m, v);
+
+    // 2. exponentiate and add up
+    var total: f32 = 0;
+    for (x, out) |v, *o| {
+        o.* = @exp(v);
+        total += o.*;
+    }
+
+    // 3. divide by the total, so everything adds up to 1
+    for (out) |*o| {
+        o.* ???;
+    }
 }
 
 fn logsumexp(x: []const f32) f32 {

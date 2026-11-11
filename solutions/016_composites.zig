@@ -7,9 +7,9 @@
 // on single numbers.
 // Your job: build the rest using ONLY things from P (and constants).
 //
-// The ones you'll build:
+// sub(a, b) = a + (-b) is written for you, as an example. The ones
+// you'll build:
 //
-//   sub(a, b)  = a + (-b)
 //   div(a, b)  = a * (1 / b)
 //   relu(x)    = max(x, 0)
 //   abs(x)     = -x if x < 0, else x          (P.where picks one of two)

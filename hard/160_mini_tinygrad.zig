@@ -298,7 +298,22 @@ pub const Tensor = struct {
     // code. Here we just compute them with plain loops.
 
     pub fn backward(loss: *Tensor) void {
-        ???; // write this function's body
+        std.debug.assert(loss.len == 1);
+        _ = loss.realize(); // forward pass first: sums must hold values
+
+        const g = loss.graph;
+        const visited = g.alloc.alloc(bool, g.count) catch oom();
+        @memset(visited, false);
+        var order: std.ArrayList(*Tensor) = .empty;
+        topoSort(loss, visited, &order, g.alloc);
+
+        loss.gradBuf()[0] = 0; // d(loss)/d(loss)
+
+        var k = order.items.len;
+        while (k > 0) {
+            k -= 1;
+            order.items[k].backwardStep();
+        }
     }
 
     /// Puts every tensor after the tensors it was built from.

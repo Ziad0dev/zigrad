@@ -12,8 +12,9 @@
 // Here we keep the reduced axis with size 1 ("keepdim"): [2, 3] summed
 // along axis 0 becomes [1, 3], not [3]. A later reshape can drop the 1 if
 // you want. Keeping it makes broadcasting back easy, which is why
-// tinygrad's and PyTorch's sum and max take keepdim=True (NumPy spells
-// it keepdims=True).
+// tinygrad's and PyTorch's sum and max can be asked to: keepdim=True
+// (NumPy spells it keepdims=True). Their default is False, which drops
+// the axis.
 //
 // The plan: for each output element (whose index along `axis` is 0),
 // walk k = 0, 1, 2, ... along `axis` and add up input[..., k, ...].
@@ -222,4 +223,10 @@ test "max along an axis" {
     var out: [2]f32 = undefined;
     _ = maxAxis(View.init(&.{ 2, 3 }), &data, 1, &out);
     try std.testing.expectEqualSlices(f32, &.{ 3, -2 }, &out);
+    // the other axis, and through a transpose: the same column maxima
+    var cols: [3]f32 = undefined;
+    _ = maxAxis(View.init(&.{ 2, 3 }), &data, 0, &cols);
+    try std.testing.expectEqualSlices(f32, &.{ 3, -1, 2 }, &cols);
+    _ = maxAxis(View.init(&.{ 2, 3 }).permute(&.{ 1, 0 }), &data, 1, &cols);
+    try std.testing.expectEqualSlices(f32, &.{ 3, -1, 2 }, &cols);
 }
