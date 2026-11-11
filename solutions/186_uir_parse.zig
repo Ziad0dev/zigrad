@@ -387,6 +387,7 @@ test "errors, like tinygrad's" {
         "", //                               no assignment
         "%0 = add %1 1", //                  %1 isn't defined
         "%0 = add 1 2 slot=1 4", //          a src after the args
+        "%0 = reduce [1 2] op=add pop 1", // ...even when it could be taken for a key
         "%0 = frob 1", //                    no such op
         "%0 = add 1 nope", //                not a %name or a literal
         "%0 = add 1 (mul 2 3", //            missing )
@@ -854,11 +855,13 @@ fn shapeOf(g: *Graph, op: Op, src: []const *const UOp, arg: Arg) Error![]const u
             return sizes;
         },
         .reduce => {
+            if (arg.reduce.op != .add and arg.reduce.op != .mul and arg.reduce.op != .max) return g.fail("REDUCE's op must be add, mul or max");
             const pop = arg.reduce.pop;
             if (pop > src[0].shape.len) return g.fail("REDUCE pops more axes than there are");
             return src[0].shape[pop..];
         },
         .stage => {
+            for (src[1..]) |r| if (r.op != .range) return g.fail("STAGE's axes are RANGEs");
             var front: []const usize = &.{};
             for (src[1..]) |r| front = g.cat(front, &.{@intCast(r.src[0].intValue().?)});
             return g.cat(front, src[0].shape);

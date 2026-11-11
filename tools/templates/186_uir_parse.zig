@@ -387,6 +387,7 @@ test "errors, like tinygrad's" {
         "", //                               no assignment
         "%0 = add %1 1", //                  %1 isn't defined
         "%0 = add 1 2 slot=1 4", //          a src after the args
+        "%0 = reduce [1 2] op=add pop 1", // ...even when it could be taken for a key
         "%0 = frob 1", //                    no such op
         "%0 = add 1 nope", //                not a %name or a literal
         "%0 = add 1 (mul 2 3", //            missing )

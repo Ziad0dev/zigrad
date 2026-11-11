@@ -597,11 +597,13 @@ fn shapeOf(g: *Graph, op: Op, src: []const *const UOp, arg: Arg) Error![]const u
             return sizes;
         },
         .reduce => {
+            if (arg.reduce.op != .add and arg.reduce.op != .mul and arg.reduce.op != .max) return g.fail("REDUCE's op must be add, mul or max");
             const pop = arg.reduce.pop;
             if (pop > src[0].shape.len) return g.fail("REDUCE pops more axes than there are");
             return src[0].shape[pop..];
         },
         .stage => {
+            for (src[1..]) |r| if (r.op != .range) return g.fail("STAGE's axes are RANGEs");
             var front: []const usize = &.{};
             for (src[1..]) |r| front = g.cat(front, &.{@intCast(r.src[0].intValue().?)});
             return g.cat(front, src[0].shape);
@@ -662,7 +664,14 @@ fn wrapI32(x: i64) i64 {
     return @as(i32, @truncate(x));
 }
 
+/// Towards zero, like C. Where C gives up (NaN, or a number too big for
+/// any int: undefined behaviour), we pick an answer instead of
+/// crashing: NaN is 0, and the rest stop at the largest i64.
 fn toInt(x: f64) i64 {
+    if (std.math.isNan(x)) return 0;
+    const limit: f64 = @floatFromInt(std.math.maxInt(i64));
+    if (x >= limit) return std.math.maxInt(i64);
+    if (x <= -limit) return std.math.minInt(i64);
     return @intFromFloat(@trunc(x));
 }
 
@@ -1110,10 +1119,13 @@ const Interp = struct {
     }
 
     /// Start the loops over `ranges`. False if some range is empty.
-    fn startLoops(it: *Interp, ranges: []const *const UOp, counters: []i64) bool {
+    fn startLoops(it: *Interp, ranges: []const *const UOp, counters: []i64) RunError!bool {
         @memset(counters, 0);
         for (ranges) |r| {
-            if (r.op != .range) return false;
+            // (a constant here would mean "no loop at all": an easy slip
+            // when an axis of size 1 was given the index 0, and one that
+            // would otherwise silently run nothing)
+            if (r.op != .range) return it.fail(error.Spec, "END and REDUCE loop over RANGEs, and only RANGEs");
             if (r.src[0].intValue().? <= 0) return false;
         }
         it.varying.clearRetainingCapacity();
@@ -1136,7 +1148,9 @@ const Interp = struct {
             .index => {
                 const base = (try it.place(u.src[0])) orelse return null; // indexing a value, not memory
                 if (u.src.len != 2 or !base.whole) return it.fail(error.Spec, "index a buffer with exactly one int");
-                const i = (try it.eval(u.src[1])).scalar();
+                const at = try it.eval(u.src[1]);
+                if (at.data.len != 1) return it.fail(error.Spec, "memory is indexed with one int, not a tensor of them");
+                const i = at.scalar();
                 if (i < 0 or i >= @as(f64, @floatFromInt(base.mem.len))) return it.fail(error.OutOfBounds, "an INDEX outside its buffer");
                 return .{ .buf = base.buf, .mem = base.mem, .offset = @intFromFloat(i), .whole = false };
             },
@@ -1202,7 +1216,7 @@ const Interp = struct {
             .end => {
                 const ranges = u.src[1..];
                 const counters = it.g.alloc.alloc(i64, ranges.len) catch @panic("out of memory");
-                if (it.startLoops(ranges, counters)) {
+                if (try it.startLoops(ranges, counters)) {
                     while (true) {
                         _ = try it.eval(u.src[0]);
                         if (!it.step(ranges, counters)) break;
@@ -1260,7 +1274,7 @@ const Interp = struct {
                 const v = it.alloc(u.dtype, u.shape);
                 const counters = it.g.alloc.alloc(i64, ranges.len) catch @panic("out of memory");
                 var at: usize = 0;
-                if (it.startLoops(ranges, counters)) {
+                if (try it.startLoops(ranges, counters)) {
                     while (true) {
                         const x = try it.eval(u.src[0]);
                         @memcpy(v.data[at .. at + x.data.len], x.data);
@@ -1433,7 +1447,7 @@ fn evalReduce(it: *Interp, u: *const UOp) RunError!Value {
     }
     const ranges = u.src[1..];
     const counters = it.g.alloc.alloc(i64, ranges.len) catch @panic("out of memory");
-    if (it.startLoops(ranges, counters)) {
+    if (try it.startLoops(ranges, counters)) {
         while (true) {
             const x = try it.eval(u.src[0]);
             for (v.data, x.data) |*acc, d| acc.* = execAlu(op, u.dtype, &.{ acc.*, d });

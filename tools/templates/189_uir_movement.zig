@@ -135,7 +135,7 @@ fn evalReduce(it: *Interp, u: *const UOp) RunError!Value {
     }
     const ranges = u.src[1..];
     const counters = it.g.alloc.alloc(i64, ranges.len) catch @panic("out of memory");
-    if (it.startLoops(ranges, counters)) {
+    if (try it.startLoops(ranges, counters)) {
         while (true) {
             const x = try it.eval(u.src[0]);
             for (v.data, x.data) |*acc, d| acc.* = execAlu(op, u.dtype, &.{ acc.*, d });

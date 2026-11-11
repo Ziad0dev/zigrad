@@ -64,7 +64,7 @@ const Lower = struct {
     g: *Graph,
     rf: *Rangeify,
     filled: std.AutoHashMap(*const UOp, *const UOp), // realized value -> AFTER(its buffer, its kernel)
-    kernels: std.ArrayList(*const UOp) = .empty, //       each kernel's END, in order
+    kernels: std.ArrayList(*const UOp) = .empty, //       each kernel, in order: its END, or its bare STORE if it has no loops
     slot: u32 = 100, //                                  slots for new buffers (inputs use small ones)
 
     fn init(g: *Graph, rf: *Rangeify) Lower {
@@ -119,7 +119,12 @@ const Lower = struct {
         }
     }
 
-    /// One kernel: loops over x's ranges, storing every element of x.
+    /// One kernel: loops over x's ranges, storing every element of x into
+    /// a new buffer (slots count up from `slot`). END closes the real
+    /// loops only: a size-1 axis has the constant 0 for its index, which
+    /// is no loop, and a kernel with no loops at all is just its STORE.
+    /// The kernel goes on `kernels`, and `filled` maps x to AFTER(buffer,
+    /// kernel), which later kernels read x through.
     fn kernel(lw: *Lower, x: *const UOp) Error!void {
         const g = lw.g;
         const ranges = (lw.rf.ranges.get(x) orelse return g.fail("an output must be computed: a bare buffer or literal has no kernel")).out;

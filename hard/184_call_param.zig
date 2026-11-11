@@ -580,11 +580,13 @@ fn shapeOf(g: *Graph, op: Op, src: []const *const UOp, arg: Arg) Error![]const u
             return sizes;
         },
         .reduce => {
+            if (arg.reduce.op != .add and arg.reduce.op != .mul and arg.reduce.op != .max) return g.fail("REDUCE's op must be add, mul or max");
             const pop = arg.reduce.pop;
             if (pop > src[0].shape.len) return g.fail("REDUCE pops more axes than there are");
             return src[0].shape[pop..];
         },
         .stage => {
+            for (src[1..]) |r| if (r.op != .range) return g.fail("STAGE's axes are RANGEs");
             var front: []const usize = &.{};
             for (src[1..]) |r| front = g.cat(front, &.{@intCast(r.src[0].intValue().?)});
             return g.cat(front, src[0].shape);
@@ -645,7 +647,14 @@ fn wrapI32(x: i64) i64 {
     return @as(i32, @truncate(x));
 }
 
+/// Towards zero, like C. Where C gives up (NaN, or a number too big for
+/// any int: undefined behaviour), we pick an answer instead of
+/// crashing: NaN is 0, and the rest stop at the largest i64.
 fn toInt(x: f64) i64 {
+    if (std.math.isNan(x)) return 0;
+    const limit: f64 = @floatFromInt(std.math.maxInt(i64));
+    if (x >= limit) return std.math.maxInt(i64);
+    if (x <= -limit) return std.math.minInt(i64);
     return @intFromFloat(@trunc(x));
 }
 

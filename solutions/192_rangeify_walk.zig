@@ -33,8 +33,10 @@
 // realized. ("fusion decision: REDUCE before the broadcast".)
 //
 // Softmax comes out as FOUR buffers here: the max, x - max (its two
-// readers, the sum and the divide, index it differently: rule 3), the sum,
-// and the output. tinygrad agrees, at this stage. Then a cost check
+// readers, the sum and the divide, index it differently: rule 3), 1/sum,
+// and the output. (1/sum, not the sum itself: rule 4 realizes the first
+// computed value below the broadcast, and that is the RECIP; the sum is
+// computed inside its kernel.) tinygrad agrees, at this stage. Then a cost check
 // throws away buffers that are cheap to recompute, and x - max is one:
 // that's 194, and it's how tinygrad's softmax ends up as three kernels.
 // (Run on a batch of rows, tinygrad gives exactly those three. On a single
@@ -715,11 +717,13 @@ fn shapeOf(g: *Graph, op: Op, src: []const *const UOp, arg: Arg) Error![]const u
             return sizes;
         },
         .reduce => {
+            if (arg.reduce.op != .add and arg.reduce.op != .mul and arg.reduce.op != .max) return g.fail("REDUCE's op must be add, mul or max");
             const pop = arg.reduce.pop;
             if (pop > src[0].shape.len) return g.fail("REDUCE pops more axes than there are");
             return src[0].shape[pop..];
         },
         .stage => {
+            for (src[1..]) |r| if (r.op != .range) return g.fail("STAGE's axes are RANGEs");
             var front: []const usize = &.{};
             for (src[1..]) |r| front = g.cat(front, &.{@intCast(r.src[0].intValue().?)});
             return g.cat(front, src[0].shape);
@@ -780,7 +784,14 @@ fn wrapI32(x: i64) i64 {
     return @as(i32, @truncate(x));
 }
 
+/// Towards zero, like C. Where C gives up (NaN, or a number too big for
+/// any int: undefined behaviour), we pick an answer instead of
+/// crashing: NaN is 0, and the rest stop at the largest i64.
 fn toInt(x: f64) i64 {
+    if (std.math.isNan(x)) return 0;
+    const limit: f64 = @floatFromInt(std.math.maxInt(i64));
+    if (x >= limit) return std.math.maxInt(i64);
+    if (x <= -limit) return std.math.minInt(i64);
     return @intFromFloat(@trunc(x));
 }
 
@@ -893,7 +904,7 @@ fn bounds(u: *const UOp) [2]f64 {
         .mul => {
             const a = bounds(u.src[0]);
             const b = bounds(u.src[1]);
-            const p = [_]f64{ a[0] * b[0], a[0] * b[1], a[1] * b[0], a[1] * b[1] };
+            const p = [_]f64{ times(a[0], b[0]), times(a[0], b[1]), times(a[1], b[0]), times(a[1], b[1]) };
             return .{ @min(@min(p[0], p[1]), @min(p[2], p[3])), @max(@max(p[0], p[1]), @max(p[2], p[3])) };
         },
         .div, .mod => {
@@ -949,6 +960,15 @@ fn memoryOf(u: *const UOp) ?*const UOp {
 
 /// 10-411's week 2 rule, checked at compile time: every INDEX into a
 /// buffer stays inside it, for every value its RANGEs can take.
+/// x * y for the corners of a range. 0 times anything is 0, even times
+/// an unknown (infinite) bound: IEEE says 0 * inf is NaN, and a NaN
+/// bound would make every comparison with it false, so an index known
+/// to be out of bounds would pass the check below.
+fn times(x: f64, y: f64) f64 {
+    if (x == 0 or y == 0) return 0;
+    return x * y;
+}
+
 fn checkIndexes(g: *Graph, root: *const UOp) Error!void {
     for (toposort(g, root, true)) |u| {
         if (u.op != .index) continue;

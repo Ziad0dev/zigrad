@@ -678,11 +678,13 @@ fn shapeOf(g: *Graph, op: Op, src: []const *const UOp, arg: Arg) Error![]const u
             return sizes;
         },
         .reduce => {
+            if (arg.reduce.op != .add and arg.reduce.op != .mul and arg.reduce.op != .max) return g.fail("REDUCE's op must be add, mul or max");
             const pop = arg.reduce.pop;
             if (pop > src[0].shape.len) return g.fail("REDUCE pops more axes than there are");
             return src[0].shape[pop..];
         },
         .stage => {
+            for (src[1..]) |r| if (r.op != .range) return g.fail("STAGE's axes are RANGEs");
             var front: []const usize = &.{};
             for (src[1..]) |r| front = g.cat(front, &.{@intCast(r.src[0].intValue().?)});
             return g.cat(front, src[0].shape);
@@ -743,7 +745,14 @@ fn wrapI32(x: i64) i64 {
     return @as(i32, @truncate(x));
 }
 
+/// Towards zero, like C. Where C gives up (NaN, or a number too big for
+/// any int: undefined behaviour), we pick an answer instead of
+/// crashing: NaN is 0, and the rest stop at the largest i64.
 fn toInt(x: f64) i64 {
+    if (std.math.isNan(x)) return 0;
+    const limit: f64 = @floatFromInt(std.math.maxInt(i64));
+    if (x >= limit) return std.math.maxInt(i64);
+    if (x <= -limit) return std.math.minInt(i64);
     return @intFromFloat(@trunc(x));
 }
 
@@ -856,7 +865,7 @@ fn bounds(u: *const UOp) [2]f64 {
         .mul => {
             const a = bounds(u.src[0]);
             const b = bounds(u.src[1]);
-            const p = [_]f64{ a[0] * b[0], a[0] * b[1], a[1] * b[0], a[1] * b[1] };
+            const p = [_]f64{ times(a[0], b[0]), times(a[0], b[1]), times(a[1], b[0]), times(a[1], b[1]) };
             return .{ @min(@min(p[0], p[1]), @min(p[2], p[3])), @max(@max(p[0], p[1]), @max(p[2], p[3])) };
         },
         .div, .mod => {
@@ -912,6 +921,15 @@ fn memoryOf(u: *const UOp) ?*const UOp {
 
 /// 10-411's week 2 rule, checked at compile time: every INDEX into a
 /// buffer stays inside it, for every value its RANGEs can take.
+/// x * y for the corners of a range. 0 times anything is 0, even times
+/// an unknown (infinite) bound: IEEE says 0 * inf is NaN, and a NaN
+/// bound would make every comparison with it false, so an index known
+/// to be out of bounds would pass the check below.
+fn times(x: f64, y: f64) f64 {
+    if (x == 0 or y == 0) return 0;
+    return x * y;
+}
+
 fn checkIndexes(g: *Graph, root: *const UOp) Error!void {
     for (toposort(g, root, true)) |u| {
         if (u.op != .index) continue;
@@ -1206,7 +1224,9 @@ fn writeLiteral(u: *const UOp, w: *std.Io.Writer) std.Io.Writer.Error!void {
         .float => |v| {
             if (std.math.isNan(v)) return w.writeAll("nan");
             if (std.math.isInf(v)) return w.writeAll(if (v > 0) "inf" else "-inf");
-            var buf: [64]u8 = undefined;
+            // every f64 written out in full fits in 512 characters (1e308
+            // has 309 digits; the smallest ones about 330)
+            var buf: [512]u8 = undefined;
             const digits = std.fmt.bufPrint(&buf, "{d}", .{v}) catch unreachable;
             try w.writeAll(digits);
             // 100.0 must not come back as the int 100
@@ -1379,10 +1399,13 @@ const Interp = struct {
     }
 
     /// Start the loops over `ranges`. False if some range is empty.
-    fn startLoops(it: *Interp, ranges: []const *const UOp, counters: []i64) bool {
+    fn startLoops(it: *Interp, ranges: []const *const UOp, counters: []i64) RunError!bool {
         @memset(counters, 0);
         for (ranges) |r| {
-            if (r.op != .range) return false;
+            // (a constant here would mean "no loop at all": an easy slip
+            // when an axis of size 1 was given the index 0, and one that
+            // would otherwise silently run nothing)
+            if (r.op != .range) return it.fail(error.Spec, "END and REDUCE loop over RANGEs, and only RANGEs");
             if (r.src[0].intValue().? <= 0) return false;
         }
         it.varying.clearRetainingCapacity();
@@ -1405,7 +1428,9 @@ const Interp = struct {
             .index => {
                 const base = (try it.place(u.src[0])) orelse return null; // indexing a value, not memory
                 if (u.src.len != 2 or !base.whole) return it.fail(error.Spec, "index a buffer with exactly one int");
-                const i = (try it.eval(u.src[1])).scalar();
+                const at = try it.eval(u.src[1]);
+                if (at.data.len != 1) return it.fail(error.Spec, "memory is indexed with one int, not a tensor of them");
+                const i = at.scalar();
                 if (i < 0 or i >= @as(f64, @floatFromInt(base.mem.len))) return it.fail(error.OutOfBounds, "an INDEX outside its buffer");
                 return .{ .buf = base.buf, .mem = base.mem, .offset = @intFromFloat(i), .whole = false };
             },
@@ -1471,7 +1496,7 @@ const Interp = struct {
             .end => {
                 const ranges = u.src[1..];
                 const counters = it.g.alloc.alloc(i64, ranges.len) catch @panic("out of memory");
-                if (it.startLoops(ranges, counters)) {
+                if (try it.startLoops(ranges, counters)) {
                     while (true) {
                         _ = try it.eval(u.src[0]);
                         if (!it.step(ranges, counters)) break;
@@ -1529,7 +1554,7 @@ const Interp = struct {
                 const v = it.alloc(u.dtype, u.shape);
                 const counters = it.g.alloc.alloc(i64, ranges.len) catch @panic("out of memory");
                 var at: usize = 0;
-                if (it.startLoops(ranges, counters)) {
+                if (try it.startLoops(ranges, counters)) {
                     while (true) {
                         const x = try it.eval(u.src[0]);
                         @memcpy(v.data[at .. at + x.data.len], x.data);
@@ -1702,7 +1727,7 @@ fn evalReduce(it: *Interp, u: *const UOp) RunError!Value {
     }
     const ranges = u.src[1..];
     const counters = it.g.alloc.alloc(i64, ranges.len) catch @panic("out of memory");
-    if (it.startLoops(ranges, counters)) {
+    if (try it.startLoops(ranges, counters)) {
         while (true) {
             const x = try it.eval(u.src[0]);
             for (v.data, x.data) |*acc, d| acc.* = execAlu(op, u.dtype, &.{ acc.*, d });
@@ -1999,7 +2024,7 @@ const Lower = struct {
     g: *Graph,
     rf: *Rangeify,
     filled: std.AutoHashMap(*const UOp, *const UOp), // realized value -> AFTER(its buffer, its kernel)
-    kernels: std.ArrayList(*const UOp) = .empty, //       each kernel's END, in order
+    kernels: std.ArrayList(*const UOp) = .empty, //       each kernel, in order: its END, or its bare STORE if it has no loops
     slot: u32 = 100, //                                  slots for new buffers (inputs use small ones)
 
     fn init(g: *Graph, rf: *Rangeify) Lower {
@@ -2054,7 +2079,12 @@ const Lower = struct {
         }
     }
 
-    /// One kernel: loops over x's ranges, storing every element of x.
+    /// One kernel: loops over x's ranges, storing every element of x into
+    /// a new buffer (slots count up from `slot`). END closes the real
+    /// loops only: a size-1 axis has the constant 0 for its index, which
+    /// is no loop, and a kernel with no loops at all is just its STORE.
+    /// The kernel goes on `kernels`, and `filled` maps x to AFTER(buffer,
+    /// kernel), which later kernels read x through.
     fn kernel(lw: *Lower, x: *const UOp) Error!void {
         const g = lw.g;
         const ranges = (lw.rf.ranges.get(x) orelse return g.fail("an output must be computed: a bare buffer or literal has no kernel")).out;
@@ -2221,9 +2251,13 @@ const CRender = struct {
                 .int => |v| try w.print("{d}", .{v}),
                 .boolean => |v| try w.writeAll(if (v) "1" else "0"),
                 .float => |v| {
+                    if (std.math.isNan(v)) return w.writeAll("__builtin_nanf(\"\")");
                     if (std.math.isInf(v)) return w.writeAll(if (v > 0) "__builtin_inff()" else "-__builtin_inff()");
+                    // huge or tiny numbers in scientific notation: 1e30
+                    // written out is 31 digits, too many for C's floats
                     var buf: [64]u8 = undefined;
-                    const digits = std.fmt.bufPrint(&buf, "{d}", .{v}) catch unreachable;
+                    const big_or_tiny = v != 0 and (@abs(v) >= 1e15 or @abs(v) < 1e-6);
+                    const digits = (if (big_or_tiny) std.fmt.bufPrint(&buf, "{e}", .{v}) else std.fmt.bufPrint(&buf, "{d}", .{v})) catch unreachable;
                     try w.print("{s}{s}f", .{ digits, if (std.mem.indexOfAny(u8, digits, ".e") == null) ".0" else "" });
                 },
                 else => unreachable,
@@ -2479,6 +2513,15 @@ const Sched = struct {
     }
 
     /// tinygrad's shift_to: split r, of n values, into n/amt and amt.
+    /// Checks, in this order and with these messages in `why` (the
+    /// tests compare them): that the type may be split off (split_targets:
+    /// "that type can't be split off that range"), that 1 < amt and amt
+    /// divides n ("amt can't divide the range"), and for UPCAST the size
+    /// limits ("don't unroll more than 32" on a reduce range, "don't
+    /// upcast more than 16" otherwise). The new range of amt gets the
+    /// next slot, and its type goes into `types`; the old range keeps its
+    /// slot, now n/amt long. `top` puts the new range outside: new *
+    /// (n/amt) + old; otherwise old * amt + new.
     fn shiftTo(s: *Sched, r: *const UOp, amt: usize, new_type: AxisType, top: bool) OptError!struct { old: *const UOp, new: *const UOp } {
         const g = s.g;
         const old_type = s.typeOf(r);

@@ -64,7 +64,7 @@ fn bounds(u: *const UOp) [2]f64 {
         .mul => {
             const a = bounds(u.src[0]);
             const b = bounds(u.src[1]);
-            const p = [_]f64{ a[0] * b[0], a[0] * b[1], a[1] * b[0], a[1] * b[1] };
+            const p = [_]f64{ times(a[0], b[0]), times(a[0], b[1]), times(a[1], b[0]), times(a[1], b[1]) };
             return .{ @min(@min(p[0], p[1]), @min(p[2], p[3])), @max(@max(p[0], p[1]), @max(p[2], p[3])) };
         },
         .div, .mod => {
@@ -120,6 +120,15 @@ fn memoryOf(u: *const UOp) ?*const UOp {
 
 /// 10-411's week 2 rule, checked at compile time: every INDEX into a
 /// buffer stays inside it, for every value its RANGEs can take.
+/// x * y for the corners of a range. 0 times anything is 0, even times
+/// an unknown (infinite) bound: IEEE says 0 * inf is NaN, and a NaN
+/// bound would make every comparison with it false, so an index known
+/// to be out of bounds would pass the check below.
+fn times(x: f64, y: f64) f64 {
+    if (x == 0 or y == 0) return 0;
+    return x * y;
+}
+
 fn checkIndexes(g: *Graph, root: *const UOp) Error!void {
     for (toposort(g, root, true)) |u| {
         if (u.op != .index) continue;
@@ -212,6 +221,12 @@ test "10-411 week 3: the store stays inside the buffer" {
     try t.expectError(error.Spec, checkIndexes(&g, try g.load(try g.index(g.buffer(2, .f32, 7), &.{odd}))));
     // and r - 1 reaches -1
     try t.expectError(error.Spec, checkIndexes(&g, try g.load(try g.index(g.buffer(1, .f32, 8), &.{try g.add(r, g.int(-1))}))));
+    // A value nothing is known about (it was loaded), times 0, is 0: so
+    // this index is exactly 100, out of bounds for 4 elements.
+    const loaded = try g.load(try g.index(g.buffer(3, .i32, 1), &.{g.int(0)}));
+    try expectBounds(0, 0, try g.mul(loaded, g.int(0)));
+    const hundred = try g.add(try g.mul(loaded, g.int(0)), g.int(100));
+    try t.expectError(error.Spec, checkIndexes(&g, try g.load(try g.index(g.buffer(4, .f32, 4), &.{hundred}))));
 }
 
 test "a check the compiler can prove disappears" {

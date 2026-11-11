@@ -58,9 +58,13 @@ const CRender = struct {
                 .int => |v| try w.print("{d}", .{v}),
                 .boolean => |v| try w.writeAll(if (v) "1" else "0"),
                 .float => |v| {
+                    if (std.math.isNan(v)) return w.writeAll("__builtin_nanf(\"\")");
                     if (std.math.isInf(v)) return w.writeAll(if (v > 0) "__builtin_inff()" else "-__builtin_inff()");
+                    // huge or tiny numbers in scientific notation: 1e30
+                    // written out is 31 digits, too many for C's floats
                     var buf: [64]u8 = undefined;
-                    const digits = std.fmt.bufPrint(&buf, "{d}", .{v}) catch unreachable;
+                    const big_or_tiny = v != 0 and (@abs(v) >= 1e15 or @abs(v) < 1e-6);
+                    const digits = (if (big_or_tiny) std.fmt.bufPrint(&buf, "{e}", .{v}) else std.fmt.bufPrint(&buf, "{d}", .{v})) catch unreachable;
                     try w.print("{s}{s}f", .{ digits, if (std.mem.indexOfAny(u8, digits, ".e") == null) ".0" else "" });
                 },
                 else => unreachable,
@@ -382,6 +386,18 @@ test "bools in C follow the spec, not C" {
     const b = try g.cast(x, .bool);
     try r.expr(try g.add(b, b)); // a cast to bool is x != 0, and bool ADD is OR (183)
     try t.expectEqualStrings("((p0[0] != 0) | (p0[0] != 0))", out.written());
+}
+
+test "float constants C can read" {
+    var arena = std.heap.ArenaAllocator.init(t.allocator);
+    defer arena.deinit();
+    var g = Graph.init(arena.allocator());
+    for ([_]f64{ 2, 0.5, 1e30, 1e-30, std.math.nan(f64), -std.math.inf(f64) }, [_][]const u8{ "2.0f", "0.5f", "1e30f", "1e-30f", "__builtin_nanf(\"\")", "-__builtin_inff()" }) |v, want| {
+        var out: std.Io.Writer.Allocating = .init(g.alloc);
+        var r: CRender = .{ .g = &g, .w = &out.writer, .accs = .init(g.alloc) };
+        try r.expr(g.float(v));
+        try t.expectEqualStrings(want, out.written());
+    }
 }
 
 test "softmax, compiled: three kernels that agree with the interpreter" {
