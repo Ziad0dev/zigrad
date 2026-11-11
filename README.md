@@ -211,7 +211,7 @@ python3 tools/check_allowlist.py   # every allowlisted mutant matches exactly on
 
 `tools/mutate.py` takes each hole's answer, makes one small mistake in it (a flipped operator, a constant off by one, swapped arguments, a dropped line), and checks that the exercise's tests then fail. A mistake that passes is either a gap in the tests or an equivalent answer; the known equivalent ones are listed, with the reason, in `tools/mutants_ok.txt`. Run it on any exercise you change.
 
-GitHub Actions runs all of these on every push (`.github/workflows/check.yml`): mutation testing on the templates a change touches, and on everything once a week. CI has no GPU, so Part VI's tests compile their kernels there and skip the rest. It has no Icarus Verilog yet either, so there Part VII's hardware tests skip too, and only run in full on your machine.
+GitHub Actions runs all of these on every push (`.github/workflows/check.yml`): mutation testing on the templates a change touches, and on everything once a week. CI has no GPU, so Part VI's tests compile their kernels there and skip the rest. It installs Icarus Verilog, so Part VII runs in full.
 
 `hard/` needs no extra writing: `gen.py` takes each function that contains a hole and replaces its whole body with one hole (functions longer than 40 lines keep their fill-in holes). Checkpoints are ordinary templates named `c1_...`, whose holes are whole function bodies.
 
