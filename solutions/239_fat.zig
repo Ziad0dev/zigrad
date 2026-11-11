@@ -687,7 +687,8 @@ fn sdInit(spi: anytype) !void {
 
 /// Reads block number `block`.
 fn sdReadBlock(spi: anytype, block: u32, out: *[block_size]u8) !void {
-    // the card counts in bytes
+    // the card counts in bytes, in 32 bits: 4 GB, 2^23 blocks, at most
+    if (block >= 1 << 23) return error.BlockTooFar;
     if (sdSend(spi, 17, block * block_size) != 0x00) return error.ReadRefused;
     // wait for the start token, but not forever
     var tries: usize = 0;
@@ -702,6 +703,7 @@ fn sdReadBlock(spi: anytype, block: u32, out: *[block_size]u8) !void {
 
 /// Writes block number `block`.
 fn sdWriteBlock(spi: anytype, block: u32, data: *const [block_size]u8) !void {
+    if (block >= 1 << 23) return error.BlockTooFar;
     if (sdSend(spi, 24, block * block_size) != 0x00) return error.WriteRefused;
     _ = spi.exchange(0xfe);
     for (data) |byte| _ = spi.exchange(byte);
@@ -769,7 +771,7 @@ const SdCard = struct {
             card.say(&.{ 0xff, @intFromBool(!card.ready) });
         } else if (!card.ready or (cmd != 17 and cmd != 24)) {
             card.say(&.{ 0xff, 0x05 }); // illegal command
-        } else if (arg % block_size != 0 or arg + block_size > card.disk.len) {
+        } else if (arg % block_size != 0 or @as(u64, arg) + block_size > card.disk.len) {
             card.say(&.{ 0xff, 0x41 }); // address error
         } else if (cmd == 17) {
             card.say(&.{ 0xff, 0x00, 0xff, 0xff, 0xff, 0xfe });

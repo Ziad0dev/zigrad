@@ -104,8 +104,12 @@ fn linkDynamic(gpa: std.mem.Allocator, objects: []const Object) !DynamicProgram 
             const listed = for (imports.items) |have| {
                 if (std.mem.eql(u8, have, reloc.name)) break true;
             } else false;
-            if (defined or listed) continue;
-            if (reloc.kind != .call24) return error.ImportedData; // only functions can take the detour
+            if (defined) continue;
+            // only calls can take the detour; anything else that names an
+            // import (its address, a variable) is refused, whatever order
+            // the uses come in
+            if (reloc.kind != .call24) return error.ImportedData;
+            if (listed) continue;
             try imports.append(alloc, try alloc.dupe(u8, reloc.name));
         }
     }
@@ -287,6 +291,9 @@ test "what the library doesn't have" {
     try expectError(error.SymbolNotInLibrary, runDynamic(ta, &program, &library));
     // a variable can't be imported through a table of functions
     try expectError(error.ImportedData, buildDynamic(&.{"extern int somewhere; int main() { return somewhere; }"}));
+    // a library function's address is data too, before or after a call to it
+    try expectError(error.ImportedData, buildDynamic(&.{"int puts(char *s); int main() { puts(\"x\"); return (int)&puts; }"}));
+    try expectError(error.ImportedData, buildDynamic(&.{"int puts(char *s); int main() { int p = (int)&puts; puts(\"x\"); return p; }"}));
 }
 
 // ─── Finished code from earlier exercises ─────────────────────────────

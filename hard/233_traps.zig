@@ -51,7 +51,9 @@
 //     +0x10 other_sp     the stack pointer of the mode we are not in
 //     +0x14 fault_addr   for a fault: the address that couldn't be used
 //     +0x18 return       writing anything here is the way back
-//     +0x1c timer        user instructions until a timer trap. 0: off.
+//     +0x1c timer        counts down once per user instruction, and the
+//                        trap comes as it reaches 0: N lets N - 1 user
+//                        instructions run (so 1 runs none). 0: off.
 //     +0x20 saved_flags  N, Z, C, V as bits 3 to 0
 //     +0x24 resume       writing an address here goes to user mode with
 //                        EVERY user register loaded from the 17 words

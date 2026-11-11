@@ -85,8 +85,12 @@ const procs_choose = ???;
 //⟫
 
 /// In trap(): what a timer trap (cause 2) does, and then, among the
-/// system calls, what exit (number 2) does. Each is one or two
-/// statements. This process's flag is alive[running].
+/// system calls (cause 1), what exit (number 2, in current[0]) does.
+/// This process's flag is alive[running]. Each ends with `return 0;`:
+/// after schedule(), `current` is another process's frame, so the code
+/// below (the kill, the other system calls) must not run on it. And
+/// check the cause before the number: a FAULT with 2 in r0 is not an
+/// exit.
 //⟪
 const procs_timer_and_exit =
     \\    if (cause == 2) {
@@ -110,7 +114,7 @@ const procs_c =
     \\int alive[4];
     \\int *current;           /* the frame trap_entry saves into and resume loads */
     \\int running;            /* whose frame that is */
-    \\int slice = 2000;       /* user instructions per turn */
+    \\int slice = 2000;       /* a turn: 1999 user instructions (233) */
     \\
     \\int spawn(int entry) {
     \\    for (int p = 0; p < 4; p++) {
@@ -213,7 +217,7 @@ test "exit, a full table, and slots that are used again" {
     try expectOutput("123-0 1 2 3 . 1 [killed 1]2 3 done",
         \\int quick() { syscall(1, '0' + syscall(5)); syscall(1, ' '); return 0; }
         \\int slow() { quick(); syscall(4); quick(); return 0; }
-        \\int wild() { quick(); int *p = (int *)0x20000000; *p = 0; return 0; }
+        \\int wild() { quick(); int *p = (int *)0x20000000; *p = 2; return 0; }   /* faults, with 2 in r0 */
         \\int user_main() {
         \\    syscall(1, '0' + syscall(6, (int)&quick));
         \\    syscall(1, '0' + syscall(6, (int)&slow));

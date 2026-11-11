@@ -133,8 +133,8 @@ const tlb_module =
     \\);
     \\  reg [41:0] entries [0:7];
     \\  reg hit, writable;
-    \\  integer i;
-    \\  initial for (i = 0; i < 8; i = i + 1) entries[i] = 0;
+    \\  integer i, k;               // two counters: two blocks must not share one
+    \\  initial for (k = 0; k < 8; k = k + 1) entries[k] = 0;
     \\  always @(posedge clk) if (we) entries[index] <= entry;
     \\  // all eight entries are compared at once: the loop describes eight
     \\  // copies of the same gates
