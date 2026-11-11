@@ -96,7 +96,12 @@ const CLower = struct {
                 for (lo.unit.functions) |f| {
                     if (std.mem.eql(u8, f.name, c.name)) return f.ret;
                 }
-                return .int;
+                // defined elsewhere (another file, assembly, the libc), and
+                // declared here
+                for (lo.unit.declared) |f| {
+                    if (std.mem.eql(u8, f.name, c.name)) return f.ret;
+                }
+                return .int; // never declared: C's old rule, an int
             },
             .binary => |b| {
                 if (b.op != .add and b.op != .sub) return .int;
@@ -133,6 +138,8 @@ const CLower = struct {
             .cast => |c| try lo.lower(c.arg),
             .call => |c| for (c.args) |arg| try lo.lower(arg),
             .assign => |a| {
+                // an array is a place, not a value that can be replaced
+                if (try lo.typeOf(a.target) == .array) return error.NotAssignable;
                 try lo.lower(a.target);
                 try lo.lower(a.value);
             },
@@ -158,11 +165,14 @@ const CLower = struct {
                 if (left != null and right != null) {
                     if (b.op == .add) return error.AddingPointers;
                     // pointer - pointer: the bytes between them, divided
-                    // by the stride. The strides here are 1 and 4, so a
-                    // shift does the dividing.
-                    if (cStride(left.?) == 4) {
+                    // by the stride. A shift does the dividing, so only
+                    // strides that are powers of 2 (1 and 4: char and int)
+                    // are allowed: an int[10] is 40 bytes.
+                    const stride = cStride(left.?);
+                    if (stride != cStride(right.?) or !std.math.isPowerOfTwo(stride)) return error.PointerDifference;
+                    if (stride > 1) {
                         const bytes = try lo.new(e.*);
-                        e.* = .{ .binary = .{ .op = .shr, .lhs = bytes, .rhs = try lo.new(.{ .num = 2 }) } };
+                        e.* = .{ .binary = .{ .op = .shr, .lhs = bytes, .rhs = try lo.new(.{ .num = std.math.log2_int(u32, stride) }) } };
                     }
                 } else if (left) |element| {
                     // pointer + n, pointer - n: n counts elements
@@ -384,6 +394,54 @@ test "strings: reversing one in place" {
     defer ta.free(ran.output);
     try expectEqual(@as(u32, 8), ran.result);
     try expectEqualStrings("desserts", ran.output);
+}
+
+fn expectCompileError(want: anyerror, source: []const u8) !void {
+    var line: u32 = 0;
+    try expectError(want, cCompile(ta, source, &line));
+}
+
+test "arrays: what you can and can't do with a whole one" {
+    // a global char array can start out holding a string, zeros after it
+    try expectRuns('h' * 100 + 0,
+        \\char s[16] = "hi";
+        \\int after = 5;
+        \\int main() { s[15] = 0; return s[0] * 100 + s[2] + (after - 5); }
+    );
+    try expectCompileError(error.BadInitializer, "char s[2] = \"hi\"; int main() { return 0; }"); // no room for the 0
+    // a local one can't, in our dialect; and no array can be assigned to
+    try expectCompileError(error.ArrayInitializer, "int main() { char s[16] = \"hi\"; return s[0]; }");
+    try expectCompileError(error.NotAssignable, "int a[3]; int main() { a = 5; return 0; }");
+    try expectCompileError(error.NotAssignable, "int main() { int a[3]; a = 0; return 0; }");
+    // the difference of two pointers to whole arrays: 40-byte steps
+    try expectCompileError(error.PointerDifference, "int a[10]; int b[10]; int main() { return &a - &b; }");
+}
+
+test "a char keeps 8 bits, as a value too" {
+    try expectRuns(44, "int main() { char c; return c = 300; }");
+    try expectRuns(1, "int main() { char c = 255; return ++c == 0; }");
+    try expectRuns(4, "int main() { char c = 250; c += 10; return c; }");
+}
+
+test "a function that is only declared still has its type" {
+    // pick() and nums() are assembly: C only sees their declarations.
+    // What they return must still be a char * and an int *, or *pick()
+    // would load a word, and nums() + 1 would step one byte.
+    const ran = try cRun(ta,
+        \\char *pick();
+        \\int *nums();
+        \\int main() { return *pick() * 1000 + *(nums() + 1); }
+    ,
+        \\pick:   ldr   r0, =text
+        \\        mov   pc, lr
+        \\nums:   ldr   r0, =table
+        \\        mov   pc, lr
+        \\text:   .asciz "hijk"
+        \\        .align 2
+        \\table:  .word 5, 7
+    , "");
+    defer ta.free(ran.output);
+    try expectEqual(@as(u32, 'h' * 1000 + 7), ran.result);
 }
 
 test "real programs: a sort and a sieve" {

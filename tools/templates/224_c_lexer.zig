@@ -32,9 +32,10 @@
 //     eof       the end, so the parser never runs off the array
 //
 // One rule decides every ambiguity: *longest match*, also called maximal
-// munch. `>>=` is one token and not `>` `>=`; `intx` is one name and not
+// munch. `<=` is one token and not `<` `=`; `intx` is one name and not
 // the keyword `int` followed by `x`; `a+++b` is `a ++ + b`, whatever its
-// author hoped. Take the longest thing that can be a token, then start
+// author hoped. (Our dialect has no `<<=` and `>>=`, so those come out
+// as `<<` `=`: one of the tests below checks exactly that.) Take the longest thing that can be a token, then start
 // again right after it.
 //
 // YOUR TASK: the pieces of cLex() marked below.
@@ -110,10 +111,16 @@ fn cLex(alloc: std.mem.Allocator, source: []const u8) ![]CToken {
             i = ⟪end + 2|||???⟫;
         } else if (std.ascii.isDigit(c)) {
             // A number runs on while there are name characters (so 0x1f
-            // is one token, and so is the mistake 12ab). Base 0 means:
-            // look at the prefix. 0x is hexadecimal.
+            // is one token, and so is the mistake 12ab). Decimal, or
+            // hexadecimal after 0x. (C reads 017 as octal, 15: we refuse
+            // a leading 0 instead of quietly reading it as 17. Zig's 0b,
+            // 0o and 1_000 aren't C either.)
             while (i < source.len and isNameChar(source[i])) i += 1;
-            const value = std.fmt.parseInt(u32, source[start..i], 0) catch return error.BadNumber;
+            const text = source[start..i];
+            const hex = std.mem.startsWith(u8, text, "0x") or std.mem.startsWith(u8, text, "0X");
+            if (!hex and (text.len > 1 and text[0] == '0')) return error.BadNumber;
+            if (std.mem.indexOfScalar(u8, text, '_') != null) return error.BadNumber;
+            const value = std.fmt.parseInt(u32, if (hex) text[2..] else text, if (hex) 16 else 10) catch return error.BadNumber;
             try toks.append(alloc, .{ .kind = .num, .text = source[start..i], .num = value, .line = line });
         } else if (isNameChar(c)) {
             while (i < source.len and isNameChar(source[i])) i += 1;
@@ -142,6 +149,13 @@ fn cLex(alloc: std.mem.Allocator, source: []const u8) ![]CToken {
             i += 1;
             while (i < source.len and source[i] != '"') {
                 if (source[i] == '\n') return error.UnterminatedString;
+                // an escape must be one we know (the same as for 'a'),
+                // and the assembler (216) knows the same ones, except \'
+                if (source[i] == '\\' and i + 1 < source.len) {
+                    if (source[i + 1] == '\n') return error.UnterminatedString;
+                    _ = try cEscape(source[i + 1]);
+                    if (source[i + 1] == '\'') return error.BadEscape;
+                }
                 i += ⟪if (source[i] == '\\') 2 else 1|||???⟫;
             }
             if (i >= source.len) return error.UnterminatedString;
@@ -198,6 +212,10 @@ test "names, keywords and numbers" {
     try expectEqual(CTok.eof, toks[values.len].kind);
     try expectError(error.BadNumber, cLex(ta, "12ab"));
     try expectError(error.BadNumber, cLex(ta, "4294967296"));
+    try expectError(error.BadNumber, cLex(ta, "017")); // C would say octal 15: we say no
+    try expectError(error.BadNumber, cLex(ta, "0b101"));
+    try expectError(error.BadNumber, cLex(ta, "1_000"));
+    try expectError(error.BadNumber, cLex(ta, "0x"));
     try expectError(error.BadCharacter, cLex(ta, "a $ b"));
     try expectError(error.BadCharacter, cLex(ta, "'ab'"));
     try expectError(error.BadEscape, cLex(ta, "'\\q'"));
@@ -222,6 +240,9 @@ test "strings and comments" {
     try expectError(error.UnterminatedString, cLex(ta, "\"abc"));
     try expectError(error.UnterminatedString, cLex(ta, "\"abc\\\""));
     try expectError(error.UnterminatedString, cLex(ta, "\"abc\ndef\""));
+    try expectError(error.UnterminatedString, cLex(ta, "\"abc\\\ndef\""));
+    try expectError(error.BadEscape, cLex(ta, "\"a \\q\""));
+    try expectError(error.BadEscape, cLex(ta, "\"it\\'s\""));
     try expectError(error.UnterminatedComment, cLex(ta, "a /* b"));
     try expectError(error.UnterminatedComment, cLex(ta, "a /*/ b"));
 }
