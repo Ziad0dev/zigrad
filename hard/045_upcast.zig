@@ -22,11 +22,13 @@
 // floats at once. In Zig that's @Vector(4, f32): `+` on two vectors adds
 // lane by lane, and @reduce(.Add, v) adds up the lanes at the end.
 //
-// tinygrad calls this UPCAST: its SPLIT optimization cuts a small
-// fixed-size loop of axis type UPCAST off one loop dimension, and that
-// small loop is fully unrolled in the rendered code, often into vector
-// types like float4. (On a reduce loop like this one, tinygrad's own
-// checks still call it unrolling: "don't unroll more than 32".)
+// tinygrad does this with its SPLIT optimization: it cuts a small
+// fixed-size loop off one loop dimension, and that small loop is fully
+// unrolled in the rendered code, often into vector types like float4.
+// The axis type of the new loop says which kind it is: UPCAST when it
+// is cut off an OUTPUT axis, UNROLL when it is cut off a REDUCE axis,
+// as here. Each has its own limit: "don't upcast more than 16" and
+// "don't unroll more than 32".
 //
 // Zig note: `x[i..][0..4]` is a pointer to 4 elements starting at i, and
 // `.*` loads them. An array of 4 floats coerces to @Vector(4, f32).

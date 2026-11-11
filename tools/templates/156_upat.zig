@@ -90,6 +90,10 @@ const one: Node = .{ .op = .constant, .value = 1 };
 const a_times_one: Node = .{ .op = .mul, .src = &.{ &a, &one } };
 const a_plus_a: Node = .{ .op = .add, .src = &.{ &a, &a } };
 const a_plus_b: Node = .{ .op = .add, .src = &.{ &a, &b } };
+const two: Node = .{ .op = .constant, .value = 2 };
+const a_times_two: Node = .{ .op = .mul, .src = &.{ &a, &two } };
+const one_plus_two: Node = .{ .op = .add, .src = &.{ &one, &two } };
+const negate_a: Node = .{ .op = .mul, .src = &.{&a} }; // a strange node with one source
 
 test "x * 1" {
     const pat: UPat = .{ .op = .mul, .src = &.{ .any("x"), .cnst(1) } };
@@ -98,6 +102,12 @@ test "x * 1" {
     try std.testing.expect(caps.get("x").? == &a);
     caps = .{};
     try std.testing.expect(!match(pat, &a_plus_a, &caps));
+    // the op fits, but the constant is a different one
+    caps = .{};
+    try std.testing.expect(!match(pat, &a_times_two, &caps));
+    // the op fits, but there's the wrong number of sources
+    caps = .{};
+    try std.testing.expect(!match(pat, &negate_a, &caps));
 }
 
 test "x + x needs the same node twice" {
@@ -106,6 +116,9 @@ test "x + x needs the same node twice" {
     try std.testing.expect(match(pat, &a_plus_a, &caps));
     caps = .{};
     try std.testing.expect(!match(pat, &a_plus_b, &caps));
+    // two different nodes, even if they look alike (both unnamed)
+    caps = .{};
+    try std.testing.expect(!match(pat, &one_plus_two, &caps));
 }
 
 test "nested patterns" {

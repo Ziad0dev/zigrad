@@ -293,6 +293,8 @@ fn simplify(g: *Graph, n: *const Node) *const Node {
 }
 
 /// Contiguous strides for a shape whose sizes are expressions (006).
+/// The step grows from the right as `step * size`, simplified each time
+/// (the tests compare rendered expressions: (2 * n), not (n * 2)).
 fn symbolicStrides(g: *Graph, shape: []const *const Node, out: []*const Node) void {
     ???; // write this function's body
 }
@@ -315,7 +317,10 @@ const Kernels = struct {
 /// once: fresh variables would be different nodes, and a different kernel.
 const Loops = struct { r: *const Node, j: *const Node };
 
-/// Sum each row of a [4, n] contiguous tensor, for the current n.
+/// Sum each row of a [4, n] contiguous tensor, for the current n. The
+/// index expression is built once and fetched through `kernels.get`,
+/// which is where a kernel would be compiled: the point is that every n
+/// reuses the same one.
 fn rowSums(g: *Graph, kernels: *Kernels, loops: Loops, n_var: *const Node, n: i64, data: []const f32, out: *[4]f32) void {
     ???; // write this function's body
 }

@@ -77,7 +77,9 @@ fn render(n: *const Node, w: *std.Io.Writer) std.Io.Writer.Error!void {
     }
 }
 
-/// How many nodes does this graph have?
+/// How many nodes does this expression have, written out as a tree? A
+/// node used twice is counted twice (exercise 022 shows why that can be
+/// a very big number).
 fn countNodes(n: *const Node) usize {
     var total: usize = 1; // this node
     for (n.src) |s| total += countNodes(s);

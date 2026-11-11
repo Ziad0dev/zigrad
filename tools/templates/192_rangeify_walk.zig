@@ -31,8 +31,10 @@
 // realized. ("fusion decision: REDUCE before the broadcast".)
 //
 // Softmax comes out as FOUR buffers here: the max, x - max (its two
-// readers, the sum and the divide, index it differently: rule 3), the sum,
-// and the output. tinygrad agrees, at this stage. Then a cost check
+// readers, the sum and the divide, index it differently: rule 3), 1/sum,
+// and the output. (1/sum, not the sum itself: rule 4 realizes the first
+// computed value below the broadcast, and that is the RECIP; the sum is
+// computed inside its kernel.) tinygrad agrees, at this stage. Then a cost check
 // throws away buffers that are cheap to recompute, and x - max is one:
 // that's 194, and it's how tinygrad's softmax ends up as three kernels.
 // (Run on a batch of rows, tinygrad gives exactly those three. On a single

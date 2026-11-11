@@ -16,7 +16,9 @@
 //
 // Zig notes:
 //   * std.Thread.spawn(.{}, function, .{ args... }) starts a thread that
-//     runs function(args...). It can fail (the OS may refuse), so `try`.
+//     runs function(args...). It can fail (the OS may refuse), so `try`;
+//     and if it fails halfway through a loop of them, the threads already
+//     started must still be joined (an `errdefer` does that below).
 //   * thread.join() waits until it's finished.
 //
 // YOUR TASK: compute each thread's row range, and spawn and join them.
@@ -47,13 +49,21 @@ const Job = struct {
     }
 };
 
-/// out[r] = sum of x[r][c]^2, with the rows split over `t` threads.
+/// out[r] = sum of x[r][c]^2, with the rows split over `t` threads
+/// (at most 64).
 fn rowSumsOfSquares(x: []const f32, rows: usize, cols: usize, out: []f32, t: usize) !void {
     var threads: [64]std.Thread = undefined;
+    if (t == 0 or t > threads.len) return error.TooManyThreads;
+    // If starting thread 5 fails, threads 0 to 4 are still running, and
+    // writing into `out`. Wait for them before handing back the error:
+    // the caller may free `out` as soon as we return.
+    var started: usize = 0;
+    errdefer for (threads[0..started]) |th| th.join();
     for (0..t) |i| {
         const range = rowRange(rows, t, i);
         const job: Job = .{ .x = x, .out = out, .cols = cols, .start = range[0], .end = range[1] };
         threads[i] = ???;
+        started += 1;
     }
     for (threads[0..t]) |th| ???;
 }

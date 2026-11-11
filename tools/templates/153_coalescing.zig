@@ -53,3 +53,14 @@ test "coalesced vs strided" {
 test "misaligned by one float: two segments" {
     try std.testing.expectEqual(2, transactions(strided(4, 1)));
 }
+
+test "the order of the addresses doesn't matter" {
+    // threads alternating between two places: still just two segments
+    var zigzag: [warp]usize = undefined;
+    for (&zigzag, 0..) |*a, t| a.* = if (t % 2 == 0) 4 * t else 256 + 4 * t;
+    try std.testing.expectEqual(2, transactions(zigzag));
+    // the coalesced pattern, backwards: one segment
+    var backwards = strided(0, 1);
+    std.mem.reverse(usize, &backwards);
+    try std.testing.expectEqual(1, transactions(backwards));
+}

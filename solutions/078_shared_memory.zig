@@ -97,6 +97,26 @@ test "two levels: blocks, then the partials" {
     try std.testing.expectEqual(1275, total); // 1 + 2 + ... + 50
 }
 
+/// The same barriers, but inside each phase the threads go in the
+/// opposite order. A GPU promises nothing about that order, so a
+/// correct block must give the same answer either way.
+fn runWithBarriersBackwards(b: *Block) f32 {
+    for (0..Block.phases()) |p| {
+        var tid: usize = bs;
+        while (tid > 0) {
+            tid -= 1;
+            b.phase(tid, p);
+        }
+    }
+    return b.sh[0];
+}
+
+test "any order within a phase" {
+    var x: [8]f32 = .{ 1, 2, 3, 4, 5, 6, 7, 8 };
+    var b: Block = .{ .x = &x, .block_id = 0 };
+    try std.testing.expectEqual(36, runWithBarriersBackwards(&b));
+}
+
 test "without barriers, the answer is wrong" {
     var x: [8]f32 = .{ 1, 2, 3, 4, 5, 6, 7, 8 };
     var b: Block = .{ .x = &x, .block_id = 0 };

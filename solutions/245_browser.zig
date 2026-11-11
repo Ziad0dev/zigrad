@@ -98,7 +98,11 @@ fn entity(name: []const u8) ?u8 {
         if (std.mem.eql(u8, name, pair[0])) return pair[1];
     }
     // &#65; is the character with that number
-    if (name.len > 1 and name[0] == '#') return std.fmt.parseInt(u8, name[1..], 10) catch null;
+    if (name.len > 1 and name[0] == '#') {
+        const number = std.fmt.parseInt(u8, name[1..], 10) catch return null;
+        // a control character (&#0;, &#10;) would break the page's lines: a space will do
+        return if (number < ' ') ' ' else number;
+    }
     return null;
 }
 
@@ -112,17 +116,42 @@ fn tagIs(name: []const u8, comptime list: []const []const u8) bool {
     return false;
 }
 
+/// The value of an attribute in a tag's text: `href` in
+/// `a class="nav" href="/x"`. It may be in double quotes, in single
+/// quotes, or bare. null if the tag doesn't have it.
+fn attribute(inside: []const u8, comptime name: []const u8) ?[]const u8 {
+    var at: usize = 0;
+    while (std.ascii.indexOfIgnoreCasePos(inside, at, name ++ "=")) |found| : (at = found + 1) {
+        // a whole name: `data-href=` is another attribute
+        if (found == 0 or !std.ascii.isWhitespace(inside[found - 1])) continue;
+        const start = found + name.len + 1;
+        if (start < inside.len and (inside[start] == '"' or inside[start] == '\'')) {
+            const end = std.mem.indexOfScalarPos(u8, inside, start + 1, inside[start]) orelse inside.len;
+            return inside[start + 1 .. end];
+        }
+        const end = std.mem.indexOfAnyPos(u8, inside, start, " \t\r\n") orelse inside.len;
+        return inside[start..end];
+    }
+    return null;
+}
+
 /// HTML to words. Everything is allocated in `arena`. Links found on the
 /// way are added to `links`.
 fn htmlWords(arena: std.mem.Allocator, html: []const u8, links: *std.ArrayList([]const u8)) ![]Word {
     var words: std.ArrayList(Word) = .empty;
     var current: std.ArrayList(u8) = .empty; // the word being collected
     var breaks: u8 = 0; // wanted before the next word
-    var hidden = false; // inside <script> or <style>
+    var in_link = false; // inside an <a> that leads somewhere
     var i: usize = 0;
     while (i <= html.len) {
         const c: u8 = if (i < html.len) html[i] else ' '; // a space after the end flushes the last word
         if (c == '<') {
+            // A comment ends at its -->, and not at a > inside it.
+            if (std.mem.startsWith(u8, html[i..], "<!--")) {
+                const end = std.mem.indexOfPos(u8, html, i + 4, "-->") orelse html.len;
+                i = @min(end + 3, html.len);
+                continue;
+            }
             const close = std.mem.indexOfScalarPos(u8, html, i, '>') orelse html.len;
             const inside = html[i + 1 .. close];
             i = @min(close + 1, html.len);
@@ -130,11 +159,16 @@ fn htmlWords(arena: std.mem.Allocator, html: []const u8, links: *std.ArrayList([
             const closing = inside.len > 0 and inside[0] == '/';
             const named = if (closing) inside[1..] else inside;
             const tag = named[0 .. std.mem.indexOfAny(u8, named, " \t\r\n/") orelse named.len];
-            if (tagIs(tag, &.{ "script", "style" })) {
-                hidden = !closing;
-                continue;
+            // What is inside <script> and <style> is not HTML and not for
+            // reading: a < in there starts no tag. Only the matching
+            // closing tag ends it.
+            inline for (.{ "script", "style" }) |raw| {
+                if (!closing and tagIs(tag, &.{raw})) {
+                    const end = std.ascii.indexOfIgnoreCasePos(html, i, "</" ++ raw) orelse html.len;
+                    const after = std.mem.indexOfScalarPos(u8, html, end, '>') orelse html.len;
+                    i = @min(after + 1, html.len);
+                }
             }
-            if (hidden) continue;
             const paragraph = tagIs(tag, &.{ "p", "h1", "h2", "h3", "h4", "ul", "ol", "table", "title", "pre", "hr" });
             const line = tagIs(tag, &.{ "br", "li", "div", "tr", "body", "html", "head" });
             if (paragraph or line) {
@@ -150,22 +184,20 @@ fn htmlWords(arena: std.mem.Allocator, html: []const u8, links: *std.ArrayList([
                 }
             } else if (tagIs(tag, &.{"a"})) {
                 if (!closing) {
-                    // remember where it leads
-                    const marker = "href=\"";
-                    if (std.mem.indexOf(u8, inside, marker)) |at| {
-                        const start = at + marker.len;
-                        const end = std.mem.indexOfScalarPos(u8, inside, start, '"') orelse inside.len;
-                        try links.append(arena, inside[start..end]);
+                    // remember where it leads, if it leads anywhere
+                    if (attribute(inside, "href")) |href| {
+                        try links.append(arena, href);
+                        in_link = true;
                     }
-                } else if (links.items.len > 0) {
+                } else if (in_link) {
                     // the link's number sticks to its last word
                     try current.print(arena, "[{d}]", .{links.items.len});
+                    in_link = false;
                 }
             }
             continue;
         }
         i += 1;
-        if (hidden) continue;
         if (std.ascii.isWhitespace(c)) {
             // any run of whitespace only ends a word
             if (current.items.len > 0) {
@@ -282,6 +314,10 @@ test "entities" {
     try expectEqual(@as(?u8, null), entity("#999"));
     try expectEqual(@as(?u8, null), entity("#"));
     try expectEqual(@as(?u8, null), entity("copy"));
+    try expectEqual(@as(?u8, ' '), entity("#10"));
+    try expectEqual(@as(?u8, ' '), entity("#0"));
+    try expectEqual(@as(?u8, ' '), entity("#32"));
+    try expectEqual(@as(?u8, '!'), entity("#33"));
 }
 
 fn expectRendered(want: []const u8, html: []const u8, width: usize) !void {
@@ -297,6 +333,14 @@ test "tags go, words stay" {
     try expectRendered("a < b && c > d \"e\" AT&T &unknown; 5 &\n", "a &lt; b &amp;&amp; c &gt; d &quot;e&quot; AT&amp;T &unknown; 5 &", 60);
     try expectRendered("before after\n", "before <script>if (a < b) { alert('<p>no</p>'); }</script><style>p { color: red }</style> after", 40);
     try expectRendered("x y\n", "x<!-- a comment --> y", 40);
+    try expectRendered("x y\n", "x<!-- a > b, <p>and -> tags</p> --> y", 40);
+    try expectRendered("x\n", "x <!-- never closed <p>", 40);
+    // a < in a script starts no tag, whatever follows it
+    try expectRendered("before after\n", "before <script>if (a < b) x();</script>after", 40);
+    try expectRendered("before after\n", "before <SCRIPT type=\"text/javascript\">for (i = 0; i < n; i++) s += \"</p>\";</Script\n> after", 40);
+    try expectRendered("a b c\n", "a <style>p > a { color: red }</style> b <script>1 < 2</script> c", 40);
+    try expectRendered("before\n", "before <script>never closed <p>", 40);
+    try expectRendered("one line\n", "one&#10;line", 40);
 }
 
 test "blocks" {
@@ -324,6 +368,15 @@ test "links" {
         \\[2] http://10.0.0.2/
         \\
     , "See <a href=\"/docs/manual.html\">the manual</a> or <a class=\"nav\" href=\"http://10.0.0.2/\">go home</a>.", 60);
+    // an <a> without href is a place, not a link: it gets no number
+    try expectRendered(
+        \\one[1] two three[2] four[3] five
+        \\
+        \\[1] /x
+        \\[2] /it"s
+        \\[3] /bare
+        \\
+    , "<a href=\"/x\">one</a> <a name=\"top\">two</a> <A HREF='/it\"s'>three</A> <a href=/bare class=k>four</a> <a data-href=\"/no\">five</a>", 60);
 }
 
 const home_page =
@@ -566,7 +619,9 @@ const TcpConn = struct {
     /// Our first sequence number: the SYN's.
     iss: u32,
     state: TcpState = .closed,
-    /// The oldest sequence number of ours that hasn't been acknowledged.
+    /// The oldest sequence number of ours that hasn't been acknowledged,
+    /// counting data only: once the FIN is acknowledged too, snd_una
+    /// stays on the FIN's own number, and `fin_acked` says so.
     snd_una: u32 = 0,
     /// The next sequence number we expect from the other side.
     rcv_nxt: u32 = 0,

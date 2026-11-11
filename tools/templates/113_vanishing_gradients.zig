@@ -33,7 +33,8 @@ fn gradThroughTime(w: f64, u: f64, xs: []const f64, h0: f64) f64 {
     return grad;
 }
 
-/// The same for a LINEAR RNN (no tanh): just w^T.
+/// The same for a LINEAR RNN (no tanh): w multiplied in once per step,
+/// w to the power `steps`.
 fn linearGrad(w: f64, steps: usize) f64 {
     return ⟪std.math.pow(f64, w, @floatFromInt(steps))|||???⟫;
 }
@@ -46,6 +47,8 @@ test "vanishing" {
 test "exploding" {
     try std.testing.expect(linearGrad(1.5, 50) > 1e8);
     try std.testing.expectApproxEqAbs(1.0, linearGrad(1.0, 50), 1e-12); // the knife edge
+    try std.testing.expectApproxEqAbs(1.5 * 1.5 * 1.5, linearGrad(1.5, 3), 1e-12);
+    try std.testing.expectApproxEqAbs(0.5, linearGrad(0.5, 1), 1e-12);
 }
 
 test "matches measured slopes" {

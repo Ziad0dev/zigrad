@@ -33,8 +33,8 @@
 // tinygrad's Tensor has a method with the same name.
 //
 // Zig notes:
-//   * strides and offset are `isize` (signed) because in exercise 013
-//     they go negative. `@intCast` converts between integer types (and
+//   * strides and offset are `isize` (signed) because they go negative:
+//     strides in exercise 013 (flip), the offset in 014 (pad). `@intCast` converts between integer types (and
 //     crashes in debug builds if the value doesn't fit).
 //   * A View holds fixed-size arrays, so it's a small value you can copy
 //     around freely, just like tinygrad's (immutable) views.
@@ -60,7 +60,11 @@ const View = struct {
 
     /// Where in memory the element at `idx` lives.
     fn position(v: View, idx: []const usize) usize {
-        ???; // write this function's body
+        var pos: isize = 0;
+        for (idx, v.strides[0..v.ndim]) |i, s| {
+            pos += @as(isize, @intCast(i)) * s;
+        }
+        return @intCast(pos);
     }
 };
 

@@ -224,6 +224,8 @@ const CGen = struct {
                 try g.pop(1);
                 if (g.typeOfTarget(a.target) == .char) {
                     try g.emit("strb r0, [r1]", .{});
+                    // the value of `c = 300` is what c now holds: 44
+                    try g.emit("and r0, r0, #255", .{});
                 } else {
                     try g.emit(⟪"str r0, [r1]"|||???⟫, .{});
                 }
@@ -395,7 +397,14 @@ const CGen = struct {
         if (v.external) return; // somebody else's: the linker will find it
         try g.out.print("{s}:\n", .{v.name});
         if (v.init) |init| {
-            if (init.* == .str) {
+            if (init.* == .str and v.type == .array) {
+                // char s[16] = "hi": the characters themselves, then zeros
+                const len = cStringLength(init.str);
+                const size = cSizeOf(v.type);
+                if (v.type.array.elem.* != .char or len + 1 > size) return error.BadInitializer;
+                try g.emit(".asciz \"{s}\"", .{init.str});
+                if (size > len + 1) try g.emit(".space {d}", .{size - len - 1});
+            } else if (init.* == .str) {
                 try g.emit(".word .Lstr{d}", .{g.strings.items.len});
                 try g.strings.append(g.alloc, init.str);
             } else {
@@ -408,6 +417,18 @@ const CGen = struct {
         try g.emit(".align 2", .{});
     }
 };
+
+/// How many characters the text of a string literal stands for: each
+/// escape (\n, \", ...) is two characters of text and one of string.
+fn cStringLength(text: []const u8) u32 {
+    var n: u32 = 0;
+    var i: usize = 0;
+    while (i < text.len) : (i += 1) {
+        if (text[i] == '\\') i += 1;
+        n += 1;
+    }
+    return n;
+}
 
 /// The assembly for a parsed file. The caller frees it.
 fn cGenerate(alloc: std.mem.Allocator, unit: *const CUnit) ![]u8 {

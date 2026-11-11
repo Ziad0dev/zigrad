@@ -49,7 +49,9 @@ fn writeLiteral(u: *const UOp, w: *std.Io.Writer) std.Io.Writer.Error!void {
         .float => |v| {
             if (std.math.isNan(v)) return w.writeAll("nan");
             if (std.math.isInf(v)) return w.writeAll(if (v > 0) "inf" else "-inf");
-            var buf: [64]u8 = undefined;
+            // every f64 written out in full fits in 512 characters (1e308
+            // has 309 digits; the smallest ones about 330)
+            var buf: [512]u8 = undefined;
             const digits = std.fmt.bufPrint(&buf, "{d}", .{v}) catch unreachable;
             try w.writeAll(digits);
             // 100.0 must not come back as the int 100
@@ -171,6 +173,8 @@ test "parse(print(x)) is x" {
         "%m = reshape [1 2 3 4] [2 2]\n%tr = permute %m [1 0]\n%test = assert (index %tr 1 0) 2",
         "%x = pad (shrink [1.5 2.5 3.5] [1] [2]) [1] [4]\n%y = where (cmplt %x (expand 2.0 4)) %x (expand 0.1 4)",
         "%b = buffer 8 slot=2 dtype=f32\n%c = cast (load (index %b 3)) dtype=i32\n%d = add %c 0x10",
+        // numbers at the ends of what an f64 can hold
+        "%big = add 1e300 2.5\n%tiny = mul 1e-300 -1e-300\n%n = add -1.7976931348623157e308 5e-324",
     };
     for (programs) |text| {
         const root = try parseUir(&g, text);

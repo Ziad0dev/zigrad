@@ -38,8 +38,10 @@ fn lineOf(addr: usize) usize {
 }
 
 /// Thread i writes one 8-byte counter at byte offset i * stride.
-/// How many cache lines are written by two or more threads?
+/// How many cache lines are written by two or more threads? (Counters
+/// must lie in the first 256 lines, 16 KiB.)
 fn sharedLines(threads: usize, stride: usize) usize {
+    std.debug.assert(threads == 0 or lineOf((threads - 1) * stride + 7) < 256);
     var writers: [256]usize = @splat(0); // writers per line
     for (0..threads) |i| {
         const first = lineOf(i * stride);

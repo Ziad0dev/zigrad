@@ -61,8 +61,12 @@ const procs_new_frame = ???;
 const procs_choose = ???;
 
 /// In trap(): what a timer trap (cause 2) does, and then, among the
-/// system calls, what exit (number 2) does. Each is one or two
-/// statements. This process's flag is alive[running].
+/// system calls (cause 1), what exit (number 2, in current[0]) does.
+/// This process's flag is alive[running]. Each ends with `return 0;`:
+/// after schedule(), `current` is another process's frame, so the code
+/// below (the kill, the other system calls) must not run on it. And
+/// check the cause before the number: a FAULT with 2 in r0 is not an
+/// exit.
 const procs_timer_and_exit = ???;
 
 const procs_c =
@@ -71,7 +75,7 @@ const procs_c =
     \\int alive[4];
     \\int *current;           /* the frame trap_entry saves into and resume loads */
     \\int running;            /* whose frame that is */
-    \\int slice = 2000;       /* user instructions per turn */
+    \\int slice = 2000;       /* a turn: 1999 user instructions (233) */
     \\
     \\int spawn(int entry) {
     \\    for (int p = 0; p < 4; p++) {
@@ -174,7 +178,7 @@ test "exit, a full table, and slots that are used again" {
     try expectOutput("123-0 1 2 3 . 1 [killed 1]2 3 done",
         \\int quick() { syscall(1, '0' + syscall(5)); syscall(1, ' '); return 0; }
         \\int slow() { quick(); syscall(4); quick(); return 0; }
-        \\int wild() { quick(); int *p = (int *)0x20000000; *p = 0; return 0; }
+        \\int wild() { quick(); int *p = (int *)0x20000000; *p = 2; return 0; }   /* faults, with 2 in r0 */
         \\int user_main() {
         \\    syscall(1, '0' + syscall(6, (int)&quick));
         \\    syscall(1, '0' + syscall(6, (int)&slow));
@@ -596,10 +600,16 @@ fn cLex(alloc: std.mem.Allocator, source: []const u8) ![]CToken {
             i = end + 2;
         } else if (std.ascii.isDigit(c)) {
             // A number runs on while there are name characters (so 0x1f
-            // is one token, and so is the mistake 12ab). Base 0 means:
-            // look at the prefix. 0x is hexadecimal.
+            // is one token, and so is the mistake 12ab). Decimal, or
+            // hexadecimal after 0x. (C reads 017 as octal, 15: we refuse
+            // a leading 0 instead of quietly reading it as 17. Zig's 0b,
+            // 0o and 1_000 aren't C either.)
             while (i < source.len and isNameChar(source[i])) i += 1;
-            const value = std.fmt.parseInt(u32, source[start..i], 0) catch return error.BadNumber;
+            const text = source[start..i];
+            const hex = std.mem.startsWith(u8, text, "0x") or std.mem.startsWith(u8, text, "0X");
+            if (!hex and (text.len > 1 and text[0] == '0')) return error.BadNumber;
+            if (std.mem.indexOfScalar(u8, text, '_') != null) return error.BadNumber;
+            const value = std.fmt.parseInt(u32, if (hex) text[2..] else text, if (hex) 16 else 10) catch return error.BadNumber;
             try toks.append(alloc, .{ .kind = .num, .text = source[start..i], .num = value, .line = line });
         } else if (isNameChar(c)) {
             while (i < source.len and isNameChar(source[i])) i += 1;
@@ -628,6 +638,13 @@ fn cLex(alloc: std.mem.Allocator, source: []const u8) ![]CToken {
             i += 1;
             while (i < source.len and source[i] != '"') {
                 if (source[i] == '\n') return error.UnterminatedString;
+                // an escape must be one we know (the same as for 'a'),
+                // and the assembler (216) knows the same ones, except \'
+                if (source[i] == '\\' and i + 1 < source.len) {
+                    if (source[i + 1] == '\n') return error.UnterminatedString;
+                    _ = try cEscape(source[i + 1]);
+                    if (source[i + 1] == '\'') return error.BadEscape;
+                }
                 i += if (source[i] == '\\') 2 else 1;
             }
             if (i >= source.len) return error.UnterminatedString;
@@ -1068,8 +1085,12 @@ const CGlobal = struct {
     external: bool = false,
 };
 
+/// A function that is declared (`char *pick(int n);`) but not defined
+/// in this file.
+const CDeclared = struct { name: []const u8, ret: CType };
+
 /// One source file, parsed.
-const CUnit = struct { functions: []CFunction, globals: []CGlobal };
+const CUnit = struct { functions: []CFunction, globals: []CGlobal, declared: []CDeclared = &.{} };
 
 fn cNewStmt(p: *CParser, s: CStmt) !*CStmt {
     const node = try p.alloc.create(CStmt);
@@ -1119,6 +1140,11 @@ fn cParseLocals(p: *CParser, base: CType) !*CStmt {
     var inits: std.ArrayList(*CStmt) = .empty;
     while (true) {
         const n = try cDeclare(p, try cParseDeclarator(p, base));
+        if (p.sees("=") and p.locals.items[n].type == .array) {
+            // `char s[16] = "hi";` copies the string in; our dialect
+            // doesn't do that for local arrays: assign the elements
+            return error.ArrayInitializer;
+        }
         if (p.eat("=")) {
             const target = try p.new(.{ .local = n });
             const assign = try p.new(.{ .assign = .{ .target = target, .value = try p.parseAssign() } });
@@ -1133,9 +1159,16 @@ fn cParseLocals(p: *CParser, base: CType) !*CStmt {
 /// The statements up to the closing brace; the opening one has been
 /// read. Whatever they declare can be seen until the block ends.
 fn cParseBlock(p: *CParser) anyerror!*CStmt {
+    return cParseBlockFrom(p, p.scope.items.len);
+}
+
+/// cParseBlock, where this block's own names start at `start` in the
+/// scope. A function's body starts at 0, so that its parameters count
+/// as declared in it: in C, `int f(int a) { int a; }` declares a twice.
+fn cParseBlockFrom(p: *CParser, start: usize) anyerror!*CStmt {
     const outer_len = p.scope.items.len;
     const outer_start = p.block_start;
-    p.block_start = outer_len;
+    p.block_start = start;
     var list: std.ArrayList(*CStmt) = .empty;
     while (!p.eat("}")) {
         if (p.peek().kind == .eof) return error.SyntaxError;
@@ -1211,6 +1244,7 @@ fn cParseStmt(p: *CParser) anyerror!*CStmt {
 fn cParseUnit(p: *CParser) !CUnit {
     var functions: std.ArrayList(CFunction) = .empty;
     var globals: std.ArrayList(CGlobal) = .empty;
+    var declared: std.ArrayList(CDeclared) = .empty;
     while (p.peek().kind != .eof) {
         const external = p.eat("extern");
         const base = p.parseBaseType() orelse return error.SyntaxError;
@@ -1244,12 +1278,17 @@ fn cParseUnit(p: *CParser) !CUnit {
             }
         }
         const params: u32 = @intCast(p.locals.items.len);
-        if (p.eat(";")) continue; // only a promise that the function exists somewhere
+        if (p.eat(";")) {
+            // only a promise that the function exists somewhere; what it
+            // returns still matters to whoever calls it (228)
+            try declared.append(p.alloc, .{ .name = first.name, .ret = first.type });
+            continue;
+        }
         try p.expect("{");
-        const body = try cParseBlock(p);
+        const body = try cParseBlockFrom(p, 0);
         try functions.append(p.alloc, .{ .name = first.name, .ret = first.type, .locals = p.locals.items, .params = params, .body = body });
     }
-    return .{ .functions = functions.items, .globals = globals.items };
+    return .{ .functions = functions.items, .globals = globals.items, .declared = declared.items };
 }
 
 /// Parses C source. Everything is allocated in `arena`. If it fails and
@@ -1469,6 +1508,8 @@ const CGen = struct {
                 try g.pop(1);
                 if (g.typeOfTarget(a.target) == .char) {
                     try g.emit("strb r0, [r1]", .{});
+                    // the value of `c = 300` is what c now holds: 44
+                    try g.emit("and r0, r0, #255", .{});
                 } else {
                     try g.emit("str r0, [r1]", .{});
                 }
@@ -1640,7 +1681,14 @@ const CGen = struct {
         if (v.external) return; // somebody else's: the linker will find it
         try g.out.print("{s}:\n", .{v.name});
         if (v.init) |init| {
-            if (init.* == .str) {
+            if (init.* == .str and v.type == .array) {
+                // char s[16] = "hi": the characters themselves, then zeros
+                const len = cStringLength(init.str);
+                const size = cSizeOf(v.type);
+                if (v.type.array.elem.* != .char or len + 1 > size) return error.BadInitializer;
+                try g.emit(".asciz \"{s}\"", .{init.str});
+                if (size > len + 1) try g.emit(".space {d}", .{size - len - 1});
+            } else if (init.* == .str) {
                 try g.emit(".word .Lstr{d}", .{g.strings.items.len});
                 try g.strings.append(g.alloc, init.str);
             } else {
@@ -1653,6 +1701,18 @@ const CGen = struct {
         try g.emit(".align 2", .{});
     }
 };
+
+/// How many characters the text of a string literal stands for: each
+/// escape (\n, \", ...) is two characters of text and one of string.
+fn cStringLength(text: []const u8) u32 {
+    var n: u32 = 0;
+    var i: usize = 0;
+    while (i < text.len) : (i += 1) {
+        if (text[i] == '\\') i += 1;
+        n += 1;
+    }
+    return n;
+}
 
 /// The assembly for a parsed file. The caller frees it.
 fn cGenerate(alloc: std.mem.Allocator, unit: *const CUnit) ![]u8 {
@@ -1758,7 +1818,12 @@ const CLower = struct {
                 for (lo.unit.functions) |f| {
                     if (std.mem.eql(u8, f.name, c.name)) return f.ret;
                 }
-                return .int;
+                // defined elsewhere (another file, assembly, the libc), and
+                // declared here
+                for (lo.unit.declared) |f| {
+                    if (std.mem.eql(u8, f.name, c.name)) return f.ret;
+                }
+                return .int; // never declared: C's old rule, an int
             },
             .binary => |b| {
                 if (b.op != .add and b.op != .sub) return .int;
@@ -1795,6 +1860,8 @@ const CLower = struct {
             .cast => |c| try lo.lower(c.arg),
             .call => |c| for (c.args) |arg| try lo.lower(arg),
             .assign => |a| {
+                // an array is a place, not a value that can be replaced
+                if (try lo.typeOf(a.target) == .array) return error.NotAssignable;
                 try lo.lower(a.target);
                 try lo.lower(a.value);
             },
@@ -1820,11 +1887,14 @@ const CLower = struct {
                 if (left != null and right != null) {
                     if (b.op == .add) return error.AddingPointers;
                     // pointer - pointer: the bytes between them, divided
-                    // by the stride. The strides here are 1 and 4, so a
-                    // shift does the dividing.
-                    if (cStride(left.?) == 4) {
+                    // by the stride. A shift does the dividing, so only
+                    // strides that are powers of 2 (1 and 4: char and int)
+                    // are allowed: an int[10] is 40 bytes.
+                    const stride = cStride(left.?);
+                    if (stride != cStride(right.?) or !std.math.isPowerOfTwo(stride)) return error.PointerDifference;
+                    if (stride > 1) {
                         const bytes = try lo.new(e.*);
-                        e.* = .{ .binary = .{ .op = .shr, .lhs = bytes, .rhs = try lo.new(.{ .num = 2 }) } };
+                        e.* = .{ .binary = .{ .op = .shr, .lhs = bytes, .rhs = try lo.new(.{ .num = std.math.log2_int(u32, stride) }) } };
                     }
                 } else if (left) |element| {
                     // pointer + n, pointer - n: n counts elements
@@ -2113,22 +2183,32 @@ const libc_division =
     \\
 ++ libc_udiv ++
     \\/* C rounds towards zero: -7 / 2 is -3, and the remainder has the
-    \\   sign of the left side: -7 % 2 is -1. */
+    \\   sign of the left side: -7 % 2 is -1. (Dividing by 0 gives a
+    \\   meaningless number, not an error: C allows that.)
+    \\
+    \\   One int has no positive twin: -2147483648, whose negation is
+    \\   itself. As a divisor it goes into nothing but itself. As the
+    \\   left side, one b is taken off it before negating, and counted
+    \\   afterwards. */
     \\int __divsi3(int a, int b) {
     \\    int negative = 0;
-    \\    if (a < 0) { a = -a; negative = !negative; }
-    \\    if (b < 0) { b = -b; negative = !negative; }
-    \\    int q = udiv(a, b);
+    \\    int taken = 0;
+    \\    if (b < 0) {
+    \\        if (b == -b) return a == b;
+    \\        b = -b;
+    \\        negative = !negative;
+    \\    }
+    \\    if (a < 0) {
+    \\        if (a == -a) { a += b; taken = 1; }
+    \\        a = -a;
+    \\        negative = !negative;
+    \\    }
+    \\    int q = udiv(a, b) + taken;
     \\    if (negative) return -q;
     \\    return q;
     \\}
     \\int __modsi3(int a, int b) {
-    \\    int negative = a < 0;
-    \\    if (a < 0) a = -a;
-    \\    if (b < 0) b = -b;
-    \\    int r = a - udiv(a, b) * b;     /* what the division left over */
-    \\    if (negative) return -r;
-    \\    return r;
+    \\    return a - __divsi3(a, b) * b;      /* what the division left over */
     \\}
     \\
 ;
@@ -2174,11 +2254,19 @@ const libc_strings =
 /// it is negative. The digit that n % 10 gives is the LAST one: so first
 /// print everything before it (that is n / 10, if there is anything),
 /// and then this digit. '0' + 7 is the character '7'.
+///
+/// For a negative n, don't start with n = -n: the most negative int,
+/// -2147483648, has no positive twin, and -n is n again. Take its last
+/// digit off while it is still negative instead: -257 % 10 is -7, so
+/// the digit is '0' - n % 10, and what comes before it is -(n / 10),
+/// which is positive and always fits.
 const libc_print_int =
     \\int print_int(int n) {
     \\    if (n < 0) {
     \\        putchar('-');
-    \\        n = -n;
+    \\        if (n <= -10) print_int(-(n / 10));
+    \\        putchar('0' - n % 10);
+    \\        return 0;
     \\    }
     \\    if (n >= 10) print_int(n / 10);
     \\    putchar('0' + n % 10);
@@ -2251,6 +2339,7 @@ const libc_memory =
     \\    return (char *)(fresh + 1);
     \\}
     \\int free(char *p) {
+    \\    if (p == 0) return 0;             /* what a failed malloc returned: nothing to give back */
     \\    int *block = (int *)p - 1;        /* back to the size word */
     \\    block[1] = (int)free_list;        /* chain it in at the front */
     \\    free_list = block;
@@ -2875,9 +2964,16 @@ fn alignUp(addr: u32, to: u32) u32 {
     return (addr + to - 1) & ~(to - 1);
 }
 
-/// How many comma-separated things follow.
+/// How many comma-separated things follow. (The comma in ',' is a
+/// character, not a separator.)
 fn countItems(sc: *Scanner) u32 {
-    return @intCast(std.mem.count(u8, sc.text[sc.at..], ",") + 1);
+    const rest = sc.text[sc.at..];
+    var count: u32 = 1;
+    for (rest, 0..) |c, i| {
+        const quoted = i > 0 and i + 1 < rest.len and rest[i - 1] == '\'' and rest[i + 1] == '\'';
+        if (c == ',' and !quoted) count += 1;
+    }
+    return count;
 }
 
 /// The bytes of a quoted string, with \n, \t, \r, \0, \\ and \" decoded.

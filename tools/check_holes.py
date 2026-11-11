@@ -83,6 +83,8 @@ def main():
         # hard mode: the first error must be on a ??? too
         for tpl in sorted(gen.TPL.glob(prefix + "*.zig")):
             src = gen.render_raw(gen.harden(gen.expand_includes(tpl.read_text())), False)
+            if not code_has_hole(src):
+                continue  # only planted bugs, kept as they are: it compiles, and its tests fail
             f = pathlib.Path(tmp) / tpl.name
             f.write_text(src)
             r = subprocess.run(["zig", "ast-check", str(f)], capture_output=True, text=True)

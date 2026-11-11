@@ -39,6 +39,9 @@ fn looksConvex(f: F, lo: f64, hi: f64) bool {
     return true;
 }
 
+/// f''(x), measured: the central second difference with step h = 1e-4.
+/// (Smaller isn't better here: dividing by h² magnifies rounding error,
+/// and at h = 1e-6 it is already bigger than the tests allow.)
 fn secondDerivative(f: F, x: f64) f64 {
     const h = 1e-4;
     return ???;

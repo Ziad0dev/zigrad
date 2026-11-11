@@ -52,7 +52,14 @@ fn wrapI32(x: i64) i64 {
     return ⟪@as(i32, @truncate(x))|||???⟫;
 }
 
+/// Towards zero, like C. Where C gives up (NaN, or a number too big for
+/// any int: undefined behaviour), we pick an answer instead of
+/// crashing: NaN is 0, and the rest stop at the largest i64.
 fn toInt(x: f64) i64 {
+    if (std.math.isNan(x)) return 0;
+    const limit: f64 = @floatFromInt(std.math.maxInt(i64));
+    if (x >= limit) return std.math.maxInt(i64);
+    if (x <= -limit) return std.math.minInt(i64);
     return @intFromFloat(@trunc(x));
 }
 
@@ -173,6 +180,10 @@ test "casts" {
     try t.expectEqual(0, castValue(0, .bool));
     try t.expectEqual(@as(f64, @as(f32, 0.1)), castValue(0.1, .f32));
     try t.expectEqual(-2147483648, castValue(2147483648, .i32)); // wraps
+    // where C has no answer, we have one, rather than a crash
+    try t.expectEqual(0, castValue(std.math.nan(f64), .i32));
+    _ = castValue(std.math.inf(f64), .i32);
+    _ = castValue(-1e300, .i32);
 }
 
 // ─── Finished code from earlier exercises ─────────────────────────────

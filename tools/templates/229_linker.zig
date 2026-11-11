@@ -296,7 +296,7 @@ test "what the assembler leaves for the linker" {
     try expectEqual(@as(usize, 2), main_o.symbols.len);
     try expectEqual(@as(u32, 0), main_o.find("main").?);
     try expectEqual(@as(u32, 32), main_o.find(".Ltwice").?);
-    // three holes: the call, and the pool word for =bonus; `bl .Ltwice` needs nothing
+    // two holes: the call, and the pool word for =bonus; `bl .Ltwice` needs nothing
     try expectEqual(@as(usize, 2), main_o.relocs.len);
     try expectEqual(RelocKind.call24, main_o.relocs[0].kind);
     try expectEqual(@as(u32, 8), main_o.relocs[0].site);

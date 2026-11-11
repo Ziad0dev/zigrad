@@ -52,7 +52,11 @@ fn sweep(v: *[cells]f64, gamma: f64) f64 {
 test "value iteration on a corridor" {
     var v: [cells]f64 = @splat(0);
     const gamma = 0.9;
-    while (sweep(&v, gamma) > 1e-12) {}
+    // (at most 10,000 sweeps: a sweep that never changes v would
+    // otherwise loop forever instead of failing)
+    for (0..10_000) |_| {
+        if (sweep(&v, gamma) <= 1e-12) break;
+    } else return error.DidNotConverge;
     for (0..goal) |s| {
         try std.testing.expectApproxEqAbs(std.math.pow(f64, gamma, @floatFromInt(4 - s)), v[s], 1e-9);
     }

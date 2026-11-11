@@ -20,7 +20,9 @@
 //
 // Zig notes:
 //   * std.Thread.spawn(.{}, function, .{ args... }) starts a thread that
-//     runs function(args...). It can fail (the OS may refuse), so `try`.
+//     runs function(args...). It can fail (the OS may refuse), so `try`;
+//     and if it fails halfway through a loop of them, the threads already
+//     started must still be joined (an `errdefer` does that below).
 //   * thread.join() waits until it's finished.
 //
 // YOUR TASK: compute each thread's row range, and spawn and join them.
@@ -48,7 +50,8 @@ const Job = struct {
     }
 };
 
-/// out[r] = sum of x[r][c]^2, with the rows split over `t` threads.
+/// out[r] = sum of x[r][c]^2, with the rows split over `t` threads
+/// (at most 64).
 fn rowSumsOfSquares(x: []const f32, rows: usize, cols: usize, out: []f32, t: usize) !void {
     ???; // write this function's body
 }

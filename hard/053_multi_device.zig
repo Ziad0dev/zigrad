@@ -45,6 +45,7 @@ fn allReduceMean(values: []f32) void {
 
 /// Gradient of mean((w*x - y)^2) with respect to w, on one device's slice.
 fn localGrad(w: f32, xs: []const f32, ys: []const f32) f32 {
+    if (xs.len == 0) return 0; // a device whose slice came out empty
     var g: f32 = 0;
     for (xs, ys) |x, y| g += 2 * (w * x - y) * x;
     return g / @as(f32, @floatFromInt(xs.len));
@@ -57,6 +58,12 @@ fn dataParallelGrad(w: f32, xs: []const f32, ys: []const f32) f32 {
     for (&grads, 0..) |*g, d| {
         const r = shardRange(xs.len, devices, d);
         g.* = localGrad(w, xs[r[0]..r[1]], ys[r[0]..r[1]]);
+        // When the slices aren't all the same size, a plain mean of the
+        // devices' means would weigh each example of a small slice more.
+        // Weighing each device by its share of the batch fixes that:
+        // the mean of (devices * share * mean) is the full batch's mean.
+        const share = @as(f32, @floatFromInt(r[1] - r[0])) / @as(f32, @floatFromInt(xs.len));
+        g.* *= devices * share;
     }
     allReduceMean(&grads);
     // Every device now holds the same number.
@@ -86,5 +93,13 @@ test "data parallel = full batch" {
     const ys = [_]f32{ 3, 5, 7, 9, 11, 13, 15, 17 };
     for ([_]f32{ 0, 1.5, 2, 3 }) |w| {
         try std.testing.expectApproxEqAbs(localGrad(w, &xs, &ys), dataParallelGrad(w, &xs, &ys), 1e-4);
+    }
+    // Batches that don't split evenly: slices of 3, 3, 3 and 1 for ten
+    // examples, and of 3, 3, 3 and nothing for nine.
+    const xs10 = [_]f32{ 1, 2, 3, 4, 5, 6, 7, 8, 9.5, -1 };
+    const ys10 = [_]f32{ 3, 5, 7, 9, 11, 13, 15, 17, 2, 4 };
+    for ([_]f32{ 0, 1.5, 2, 3 }) |w| {
+        try std.testing.expectApproxEqAbs(localGrad(w, &xs10, &ys10), dataParallelGrad(w, &xs10, &ys10), 1e-3);
+        try std.testing.expectApproxEqAbs(localGrad(w, xs10[0..9], ys10[0..9]), dataParallelGrad(w, xs10[0..9], ys10[0..9]), 1e-3);
     }
 }

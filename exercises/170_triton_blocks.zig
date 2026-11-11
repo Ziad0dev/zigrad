@@ -59,8 +59,11 @@ fn store(mem: []f32, base: usize, v: Vf, mask: Vb) void {
     }
 }
 
-/// One program: softmax of row `row` of a [rows, n_cols] matrix.
+/// One program: softmax of row `row` of a [rows, n_cols] matrix. The
+/// whole row must fit in one block (n_cols <= BLOCK), as in Triton's
+/// tutorial, where BLOCK is the next power of 2 above n_cols.
 fn softmaxProgram(row: usize, x: []const f32, out: []f32, n_cols: usize, stride: usize) void {
+    std.debug.assert(n_cols <= BLOCK);
     const offs = arange();
     const mask: Vb = ???;
     var v = load(x, row * stride, mask, ???);

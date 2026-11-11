@@ -12,8 +12,9 @@
 // activation. During backward, when a segment's activations are needed,
 // recompute them from the nearest checkpoint.
 //
-//     memory:  n / k checkpoints  +  k activations for the segment being
-//              recomputed
+//     memory:  ceil(n / k) checkpoints  +  k activations for the segment
+//              being recomputed (a last, shorter segment still needs its
+//              checkpoint: 10 layers in segments of 4 are 3 segments)
 //     compute: about one extra forward pass in total
 //
 // n/k + k is smallest at k = sqrt(n): 100 layers need about 20 stored
@@ -27,6 +28,7 @@
 //
 const std = @import("std");
 
+/// Activations kept at once: ceil(n / k) checkpoints, plus k.
 fn memory(n: usize, k: usize) usize {
     return (n + k - 1) / k + k; // checkpoints (rounded up) + one segment
 }

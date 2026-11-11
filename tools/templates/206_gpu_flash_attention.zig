@@ -44,7 +44,8 @@
 //
 const std = @import("std");
 
-/// How much the old sums shrink when the maximum grows from m to m_new.
+/// How much the old sums shrink when the maximum grows from m to m_new:
+/// a whole C statement that DECLARES `scale` (the next two lines use it).
 const online_scale = ⟪"float scale = EXP(m - m_new);"|||???⟫;
 /// The new running sum of weights, with p = exp(s - m_new).
 const online_l = ⟪"l = l * scale + p;"|||???⟫;

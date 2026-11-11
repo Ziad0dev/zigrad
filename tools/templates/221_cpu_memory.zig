@@ -156,6 +156,10 @@ test "summing an array: three addressing modes" {
         \\        ldr   r9, [r8]
         \\        ldr   r10, [r8, #-12]       @ numbers[3], from the other side
         \\        ldr   r6, [r6]              @ rn and rd the same: the load wins
+        \\        ldr   r11, =numbers
+        \\        ldr   r11, [r11], #4        @ ...also when rn is written back: rd gets the load
+        \\        ldr   r12, =numbers
+        \\        ldr   r12, [r12, #8]!       @ (real ARMs call these "unpredictable": ours decide)
         \\        swi   0
         \\numbers: .word 0x102, 0x304, 0x506, 0x708
         \\result: .word 0

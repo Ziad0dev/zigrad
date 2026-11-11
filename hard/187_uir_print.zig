@@ -138,6 +138,8 @@ test "parse(print(x)) is x" {
         "%m = reshape [1 2 3 4] [2 2]\n%tr = permute %m [1 0]\n%test = assert (index %tr 1 0) 2",
         "%x = pad (shrink [1.5 2.5 3.5] [1] [2]) [1] [4]\n%y = where (cmplt %x (expand 2.0 4)) %x (expand 0.1 4)",
         "%b = buffer 8 slot=2 dtype=f32\n%c = cast (load (index %b 3)) dtype=i32\n%d = add %c 0x10",
+        // numbers at the ends of what an f64 can hold
+        "%big = add 1e300 2.5\n%tiny = mul 1e-300 -1e-300\n%n = add -1.7976931348623157e308 5e-324",
     };
     for (programs) |text| {
         const root = try parseUir(&g, text);
@@ -585,11 +587,13 @@ fn shapeOf(g: *Graph, op: Op, src: []const *const UOp, arg: Arg) Error![]const u
             return sizes;
         },
         .reduce => {
+            if (arg.reduce.op != .add and arg.reduce.op != .mul and arg.reduce.op != .max) return g.fail("REDUCE's op must be add, mul or max");
             const pop = arg.reduce.pop;
             if (pop > src[0].shape.len) return g.fail("REDUCE pops more axes than there are");
             return src[0].shape[pop..];
         },
         .stage => {
+            for (src[1..]) |r| if (r.op != .range) return g.fail("STAGE's axes are RANGEs");
             var front: []const usize = &.{};
             for (src[1..]) |r| front = g.cat(front, &.{@intCast(r.src[0].intValue().?)});
             return g.cat(front, src[0].shape);

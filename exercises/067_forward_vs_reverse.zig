@@ -105,4 +105,8 @@ test "why deep learning uses reverse mode" {
     const weights = 1_000_000;
     try std.testing.expectEqual(1_000_000, passesNeeded(.forward, weights, 1));
     try std.testing.expectEqual(1, passesNeeded(.reverse, weights, 1));
+    // a function with 3 inputs and 4 outputs: forward needs a pass per
+    // input, reverse a pass per output
+    try std.testing.expectEqual(3, passesNeeded(.forward, 3, 4));
+    try std.testing.expectEqual(4, passesNeeded(.reverse, 3, 4));
 }

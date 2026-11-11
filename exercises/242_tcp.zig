@@ -63,7 +63,9 @@ const TcpConn = struct {
     /// Our first sequence number: the SYN's.
     iss: u32,
     state: TcpState = .closed,
-    /// The oldest sequence number of ours that hasn't been acknowledged.
+    /// The oldest sequence number of ours that hasn't been acknowledged,
+    /// counting data only: once the FIN is acknowledged too, snd_una
+    /// stays on the FIN's own number, and `fin_acked` says so.
     snd_una: u32 = 0,
     /// The next sequence number we expect from the other side.
     rcv_nxt: u32 = 0,

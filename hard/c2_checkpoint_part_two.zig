@@ -157,10 +157,13 @@ test "causal attention" {
     const same_k = [_]f64{ 1, -1 } ** tokens;
     causalAttention(&q, &same_k, &v, tokens, d, &out, &scratch);
     try t.expectApproxEqAbs((v[0] + v[2] + v[4]) / 3.0, out[4], 1e-12);
-    // scores far beyond exp's range still work
+    // scores far beyond exp's range still work: 1000 * (1 + 1) = 2000,
+    // and e^2000 is inf in f64
     const huge_q = [_]f64{ 1000, 1000 } ** tokens;
-    causalAttention(&huge_q, &same_k, &v, tokens, d, &out, &scratch);
+    const plus_k = [_]f64{ 1, 1 } ** tokens;
+    causalAttention(&huge_q, &plus_k, &v, tokens, d, &out, &scratch);
     for (out) |o| try t.expect(!std.math.isNan(o));
+    try t.expectApproxEqAbs((v[0] + v[2] + v[4]) / 3.0, out[4], 1e-12); // still an even mean
     const big_k = [_]f64{ 1, 1, 2, 2, 3, 3, 4, 4 };
     causalAttention(&huge_q, &big_k, &v, tokens, d, &out, &scratch);
     try t.expectApproxEqAbs(v[6], out[6], 1e-9); // the last key wins outright

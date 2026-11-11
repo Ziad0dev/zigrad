@@ -81,7 +81,10 @@ fn shuffle(rand: std.Random, idx: []usize) void {
     }
 }
 
-/// Per-pixel mean and standard deviation over n examples.
+/// Per-pixel mean and standard deviation over n examples. The variance
+/// divides by n (the "population" variance, what normalizing uses),
+/// not n - 1: careful, tinygrad's and PyTorch's Tensor.std divide by
+/// n - 1 unless told otherwise (correction=0).
 fn pixelStats(xs: []const f64, n: usize, mean: []f64, sd: []f64) void {
     const nf: f64 = @floatFromInt(n);
     for (0..pixels) |p| {

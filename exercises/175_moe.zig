@@ -93,8 +93,9 @@ test "routing one token" {
 }
 
 test "big logits don't overflow" {
-    const w = weights(.{ 400, 399, 0, 0 }, .{ 0, 1 });
-    // e^0 : e^-1, computed without ever forming e^400
+    // e^800 is far beyond f64 (whose largest is about e^709): it would
+    // be inf, and inf / inf is NaN. e^0 : e^-1 is what we want.
+    const w = weights(.{ 800, 799, 0, 0 }, .{ 0, 1 });
     try std.testing.expectApproxEqAbs(1 / (1 + @exp(@as(f64, -1))), w[0], 1e-12);
 }
 

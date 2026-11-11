@@ -74,6 +74,11 @@ test "all zeros: this is what ε is for" {
     var y: [3]f64 = undefined;
     forward(&x, &g, &y);
     for (y) |v| try std.testing.expectEqual(0, v); // not nan
+    // ε goes INSIDE the square root: the rms of zeros is sqrt(ε) = 0.001,
+    // not 0 + ε
+    try std.testing.expectApproxEqAbs(1e-3, rms(&x), 1e-15);
+    // and for a tiny row it is what you'd expect: sqrt(1e-6 + 1e-6)
+    try std.testing.expectApproxEqAbs(@sqrt(2e-6), rms(&.{ 1e-3, -1e-3 }), 1e-15);
 }
 
 test "dx matches measured slopes" {

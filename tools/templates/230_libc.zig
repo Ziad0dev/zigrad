@@ -83,22 +83,32 @@ const libc_division =
     \\
 ++ libc_udiv ++
     \\/* C rounds towards zero: -7 / 2 is -3, and the remainder has the
-    \\   sign of the left side: -7 % 2 is -1. */
+    \\   sign of the left side: -7 % 2 is -1. (Dividing by 0 gives a
+    \\   meaningless number, not an error: C allows that.)
+    \\
+    \\   One int has no positive twin: -2147483648, whose negation is
+    \\   itself. As a divisor it goes into nothing but itself. As the
+    \\   left side, one b is taken off it before negating, and counted
+    \\   afterwards. */
     \\int __divsi3(int a, int b) {
     \\    int negative = 0;
-    \\    if (a < 0) { a = -a; negative = !negative; }
-    \\    if (b < 0) { b = -b; negative = !negative; }
-    \\    int q = udiv(a, b);
+    \\    int taken = 0;
+    \\    if (b < 0) {
+    \\        if (b == -b) return a == b;
+    \\        b = -b;
+    \\        negative = !negative;
+    \\    }
+    \\    if (a < 0) {
+    \\        if (a == -a) { a += b; taken = 1; }
+    \\        a = -a;
+    \\        negative = !negative;
+    \\    }
+    \\    int q = udiv(a, b) + taken;
     \\    if (negative) return -q;
     \\    return q;
     \\}
     \\int __modsi3(int a, int b) {
-    \\    int negative = a < 0;
-    \\    if (a < 0) a = -a;
-    \\    if (b < 0) b = -b;
-    \\    int r = a - udiv(a, b) * b;     /* what the division left over */
-    \\    if (negative) return -r;
-    \\    return r;
+    \\    return a - __divsi3(a, b) * b;      /* what the division left over */
     \\}
     \\
 ;
@@ -148,12 +158,20 @@ const libc_strings =
 /// it is negative. The digit that n % 10 gives is the LAST one: so first
 /// print everything before it (that is n / 10, if there is anything),
 /// and then this digit. '0' + 7 is the character '7'.
+///
+/// For a negative n, don't start with n = -n: the most negative int,
+/// -2147483648, has no positive twin, and -n is n again. Take its last
+/// digit off while it is still negative instead: -257 % 10 is -7, so
+/// the digit is '0' - n % 10, and what comes before it is -(n / 10),
+/// which is positive and always fits.
 //⟪
 const libc_print_int =
     \\int print_int(int n) {
     \\    if (n < 0) {
     \\        putchar('-');
-    \\        n = -n;
+    \\        if (n <= -10) print_int(-(n / 10));
+    \\        putchar('0' - n % 10);
+    \\        return 0;
     \\    }
     \\    if (n >= 10) print_int(n / 10);
     \\    putchar('0' + n % 10);
@@ -233,6 +251,7 @@ const libc_memory =
     \\    return (char *)(fresh + 1);
     \\}
     \\int free(char *p) {
+    \\    if (p == 0) return 0;             /* what a failed malloc returned: nothing to give back */
     \\    int *block = (int *)p - 1;        /* back to the size word */
     \\    block[1] = (int)free_list;        /* chain it in at the front */
     \\    free_list = block;
@@ -306,6 +325,22 @@ test "division rounds towards zero" {
     try expectResult(-1, "int main() { return -7 % -2; }");
 }
 
+test "the int with no positive twin" {
+    // -2147483648: C can't even write it as a literal
+    const lowest = "int main() { int lowest = -0x7fffffff - 1; ";
+    try expectResult(-214748364, lowest ++ "return lowest / 10; }");
+    try expectResult(214748364, lowest ++ "return lowest / -10; }");
+    try expectResult(-8, lowest ++ "return lowest % 10; }");
+    try expectResult(-8, lowest ++ "return lowest % -10; }");
+    try expectResult(-0x40000000, lowest ++ "return lowest / 2; }");
+    try expectResult(std.math.minInt(i32), lowest ++ "return lowest / 1; }");
+    try expectResult(1, lowest ++ "return lowest / lowest; }");
+    try expectResult(0, lowest ++ "return lowest % lowest; }");
+    try expectResult(0, lowest ++ "return 0x7fffffff / lowest; }");
+    try expectResult(0x7fffffff, lowest ++ "return 0x7fffffff % lowest; }");
+    try expectResult(-5, lowest ++ "return -5 % lowest; }");
+}
+
 test "strings" {
     try expectResult(0, "int main() { return strcmp(\"abc\", \"abc\"); }");
     try expectResult(0, "int main() { return strcmp(\"\", \"\"); }");
@@ -330,11 +365,11 @@ test "strings" {
 
 test "printing" {
     try expectOutput("hello, world\n", "int main() { puts(\"hello, world\\n\"); return 0; }", "");
-    try expectOutput("0 7 10 42 -5 1000000 2147483647 -2147483647 ",
+    try expectOutput("0 7 10 42 -5 -9 -10 -11 -100 1000000 2147483647 -2147483647 -2147483648 ",
         \\int show(int n) { print_int(n); putchar(' '); return 0; }
         \\int main() {
-        \\    show(0); show(7); show(10); show(42); show(-5); show(1000000);
-        \\    show(0x7fffffff); show(-0x7fffffff);
+        \\    show(0); show(7); show(10); show(42); show(-5); show(-9); show(-10); show(-11); show(-100); show(1000000);
+        \\    show(0x7fffffff); show(-0x7fffffff); show(-0x7fffffff - 1);
         \\    return 0;
         \\}
     , "");
@@ -401,6 +436,18 @@ test "malloc and free" {
         \\    int n = 0;
         \\    while (malloc(4000)) n++;
         \\    return n;
+        \\}
+    );
+    // which is why free must leave a 0 alone
+    try expectResult(7,
+        \\extern int *free_list;
+        \\int main() {
+        \\    free(malloc(9000));
+        \\    free(0);
+        \\    if (free_list) return 1;
+        \\    char *p = malloc(4);
+        \\    *p = 7;
+        \\    return *p;
         \\}
     );
 }

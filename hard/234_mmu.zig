@@ -133,8 +133,8 @@ const tlb_module =
     \\);
     \\  reg [41:0] entries [0:7];
     \\  reg hit, writable;
-    \\  integer i;
-    \\  initial for (i = 0; i < 8; i = i + 1) entries[i] = 0;
+    \\  integer i, k;               // two counters: two blocks must not share one
+    \\  initial for (k = 0; k < 8; k = k + 1) entries[k] = 0;
     \\  always @(posedge clk) if (we) entries[index] <= entry;
     \\  // all eight entries are compared at once: the loop describes eight
     \\  // copies of the same gates
@@ -609,7 +609,18 @@ fn simulate(gpa: std.mem.Allocator, source: []const u8) ![]u8 {
         return error.VerilogError;
     }
     // 2. ...and run it. -n: stop at $finish instead of asking what to do.
-    const ran = try std.process.run(alloc, io, .{ .argv = &.{ "vvp", "-n", vvp_path }, .cwd = .{ .path = dir } });
+    // A design can run forever (a bench that never reaches $finish, a
+    // loop of gates that never settles), so give it a minute; run() stops
+    // the simulator when the time is up.
+    const minute: std.Io.Timeout = .{ .duration = .{ .raw = .fromSeconds(60), .clock = .awake } };
+    const ran = std.process.run(alloc, io, .{
+        .argv = &.{ "vvp", "-n", vvp_path },
+        .cwd = .{ .path = dir },
+        .timeout = minute.toDeadline(io),
+    }) catch |err| {
+        if (err == error.Timeout) std.debug.print("the simulation was still running after a minute: does it reach $finish?\n", .{});
+        return err;
+    };
     if (ran.term != .exited or ran.term.exited != 0) {
         std.debug.print("vvp failed:\n{s}\n{s}\n", .{ ran.stdout, ran.stderr });
         return error.SimulationFailed;
@@ -1235,9 +1246,16 @@ fn alignUp(addr: u32, to: u32) u32 {
     return (addr + to - 1) & ~(to - 1);
 }
 
-/// How many comma-separated things follow.
+/// How many comma-separated things follow. (The comma in ',' is a
+/// character, not a separator.)
 fn countItems(sc: *Scanner) u32 {
-    return @intCast(std.mem.count(u8, sc.text[sc.at..], ",") + 1);
+    const rest = sc.text[sc.at..];
+    var count: u32 = 1;
+    for (rest, 0..) |c, i| {
+        const quoted = i > 0 and i + 1 < rest.len and rest[i - 1] == '\'' and rest[i + 1] == '\'';
+        if (c == ',' and !quoted) count += 1;
+    }
+    return count;
 }
 
 /// The bytes of a quoted string, with \n, \t, \r, \0, \\ and \" decoded.

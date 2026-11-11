@@ -12,9 +12,13 @@
 //     A = | 2 1 |      A [1, 1] = [3, 3] = 3 [1, 1]      λ = 3
 //         | 1 2 |      A [1,-1] = [1,-1] = 1 [1,-1]      λ = 1
 //
-// *Power iteration* finds the biggest one: multiply any starting vector by
-// A again and again (normalizing so it doesn't blow up). The biggest
-// stretch wins, and the vector turns toward its eigenvector. Then
+// *Power iteration* finds the biggest one, biggest in size: -5 beats 3.
+// Multiply a starting vector by A again and again (normalizing so it
+// doesn't blow up). The biggest stretch wins, and the vector turns
+// toward its eigenvector. (Almost any starting vector works: not one at
+// right angles to that eigenvector, which has none of it to grow. Ours
+// starts from all ones, which fails for A = [[1, -2], [-2, 1]]: its λ = 3
+// eigenvector is [1, -1].) Then
 // λ = dot(v, A v) for a unit vector v (the "Rayleigh quotient").
 //
 // Why an ML person cares: remember exercise 032? For f = (x - 3)^2,
@@ -50,7 +54,8 @@ fn dot(a: []const f64, b: []const f64) f64 {
     return acc;
 }
 
-/// The largest eigenvalue of the symmetric n x n matrix a (n <= 8).
+/// The eigenvalue of the symmetric n x n matrix a (n <= 8) that is
+/// largest in absolute value, by power iteration from all ones.
 fn powerIteration(a: []const f64, n: usize, steps: usize) f64 {
     ???; // write this function's body
 }

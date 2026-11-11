@@ -70,13 +70,25 @@ test "store a value, remember it for 100 steps" {
     var c: f64 = 0;
     c = l.step(c, 1.5)[0]; // a big input: written into memory
     const stored = c;
-    for (0..100) |_| c = l.step(c, 0)[0]; // small inputs: gate stays shut
-    try std.testing.expectApproxEqAbs(stored, c, 1e-4);
+    // Small inputs: the input gate stays shut (sigmoid(-10 + 10 * 0.2) is
+    // about 0.0003), so almost none of tanh(0.2) gets in. Without the
+    // gate, 100 of them would add up to 20.
+    for (0..100) |_| c = l.step(c, 0.2)[0];
+    try std.testing.expectApproxEqAbs(stored, c, 0.01);
 }
 
 test "the gradient along the memory is the product of forget gates" {
     const l: Lstm = .{ .f_bias = 20, .i_bias = -10, .i_weight = 10 };
     const f = l.gates(0).f;
-    // d c_100 / d c_0 = f^100, still about 1
-    try std.testing.expect(std.math.pow(f64, f, 100) > 0.99);
+    // d c_100 / d c_0 = f^100, still about 1. Measured through step():
+    const h = 1e-6;
+    var up: f64 = 0.3 + h;
+    var down: f64 = 0.3 - h;
+    for (0..100) |_| {
+        up = l.step(up, 0.1)[0];
+        down = l.step(down, 0.1)[0];
+    }
+    const slope = (up - down) / (2 * h);
+    try std.testing.expectApproxEqAbs(std.math.pow(f64, f, 100), slope, 1e-6);
+    try std.testing.expect(slope > 0.99);
 }

@@ -8,7 +8,7 @@ Parts I–IV teach the ideas with small, made-up IRs. Part V rebuilds tinygrad a
 
 ## Getting started
 
-You need **Zig 0.16.0** ([download](https://ziglang.org/download/)). Part VII also wants [Icarus Verilog](https://steveicarus.github.io/iverilog/) (`iverilog`, in every package manager) to simulate its hardware; without it, those tests skip.
+You need **Zig 0.16.0** ([download](https://ziglang.org/download/)). Part VII also wants [Icarus Verilog](https://steveicarus.github.io/iverilog/) (`iverilog`, in every package manager) to simulate its hardware; without it, those tests skip. `zig build` marks an exercise whose tests skipped, and checks it again next time instead of remembering it as passed.
 
 Or, with [Nix](https://nixos.org/download/) (flakes enabled), get it from the dev shell in this repo:
 

@@ -34,7 +34,9 @@ fn sum(data: []const f32) f32 {
 }
 
 fn max(data: []const f32) f32 {
-    ???; // write this function's body
+    var best: f32 = 0;
+    for (data) |x| best = @max(best, x);
+    return best;
 }
 
 fn mean(data: []const f32) f32 {

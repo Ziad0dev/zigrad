@@ -100,8 +100,12 @@ const CGlobal = struct {
     external: bool = false,
 };
 
+/// A function that is declared (`char *pick(int n);`) but not defined
+/// in this file.
+const CDeclared = struct { name: []const u8, ret: CType };
+
 /// One source file, parsed.
-const CUnit = struct { functions: []CFunction, globals: []CGlobal };
+const CUnit = struct { functions: []CFunction, globals: []CGlobal, declared: []CDeclared = &.{} };
 
 fn cNewStmt(p: *CParser, s: CStmt) !*CStmt {
     const node = try p.alloc.create(CStmt);
@@ -151,6 +155,11 @@ fn cParseLocals(p: *CParser, base: CType) !*CStmt {
     var inits: std.ArrayList(*CStmt) = .empty;
     while (true) {
         const n = try cDeclare(p, try cParseDeclarator(p, base));
+        if (p.sees("=") and p.locals.items[n].type == .array) {
+            // `char s[16] = "hi";` copies the string in; our dialect
+            // doesn't do that for local arrays: assign the elements
+            return error.ArrayInitializer;
+        }
         if (p.eat("=")) {
             const target = try p.new(.{ .local = n });
             const assign = try p.new(.{ .assign = .{ .target = target, .value = try p.parseAssign() } });
@@ -165,9 +174,16 @@ fn cParseLocals(p: *CParser, base: CType) !*CStmt {
 /// The statements up to the closing brace; the opening one has been
 /// read. Whatever they declare can be seen until the block ends.
 fn cParseBlock(p: *CParser) anyerror!*CStmt {
+    return cParseBlockFrom(p, p.scope.items.len);
+}
+
+/// cParseBlock, where this block's own names start at `start` in the
+/// scope. A function's body starts at 0, so that its parameters count
+/// as declared in it: in C, `int f(int a) { int a; }` declares a twice.
+fn cParseBlockFrom(p: *CParser, start: usize) anyerror!*CStmt {
     const outer_len = p.scope.items.len;
     const outer_start = p.block_start;
-    p.block_start = outer_len;
+    p.block_start = start;
     var list: std.ArrayList(*CStmt) = .empty;
     while (!p.eat("}")) {
         if (p.peek().kind == .eof) return error.SyntaxError;
@@ -243,6 +259,7 @@ fn cParseStmt(p: *CParser) anyerror!*CStmt {
 fn cParseUnit(p: *CParser) !CUnit {
     var functions: std.ArrayList(CFunction) = .empty;
     var globals: std.ArrayList(CGlobal) = .empty;
+    var declared: std.ArrayList(CDeclared) = .empty;
     while (p.peek().kind != .eof) {
         const external = p.eat("extern");
         const base = p.parseBaseType() orelse return error.SyntaxError;
@@ -276,12 +293,17 @@ fn cParseUnit(p: *CParser) !CUnit {
             }
         }
         const params: u32 = @intCast(p.locals.items.len);
-        if (p.eat(";")) continue; // only a promise that the function exists somewhere
+        if (p.eat(";")) {
+            // only a promise that the function exists somewhere; what it
+            // returns still matters to whoever calls it (228)
+            try declared.append(p.alloc, .{ .name = first.name, .ret = first.type });
+            continue;
+        }
         try p.expect("{");
-        const body = try cParseBlock(p);
+        const body = try cParseBlockFrom(p, 0);
         try functions.append(p.alloc, .{ .name = first.name, .ret = first.type, .locals = p.locals.items, .params = params, .body = body });
     }
-    return .{ .functions = functions.items, .globals = globals.items };
+    return .{ .functions = functions.items, .globals = globals.items, .declared = declared.items };
 }
 
 /// Parses C source. Everything is allocated in `arena`. If it fails and
@@ -509,6 +531,7 @@ test "errors, and where they are" {
     try expectEqual(@as(u32, 3), line);
     try expectError(error.Redeclared, cParse(alloc, "int f(int a, int a) { }", &line));
     try expectError(error.Redeclared, cParse(alloc, "int f() { for (int i = 0, i = 1;;) ; }", &line));
+    try expectError(error.Redeclared, cParse(alloc, "int f(int a) { int a = 2; return a; }", &line)); // the body is the parameters' block
     // not errors: a new block may reuse a name
     _ = try cParse(alloc, "int f(int a) { int b; { int a; int b; } { int b; } }", &line);
 }
@@ -587,10 +610,16 @@ fn cLex(alloc: std.mem.Allocator, source: []const u8) ![]CToken {
             i = end + 2;
         } else if (std.ascii.isDigit(c)) {
             // A number runs on while there are name characters (so 0x1f
-            // is one token, and so is the mistake 12ab). Base 0 means:
-            // look at the prefix. 0x is hexadecimal.
+            // is one token, and so is the mistake 12ab). Decimal, or
+            // hexadecimal after 0x. (C reads 017 as octal, 15: we refuse
+            // a leading 0 instead of quietly reading it as 17. Zig's 0b,
+            // 0o and 1_000 aren't C either.)
             while (i < source.len and isNameChar(source[i])) i += 1;
-            const value = std.fmt.parseInt(u32, source[start..i], 0) catch return error.BadNumber;
+            const text = source[start..i];
+            const hex = std.mem.startsWith(u8, text, "0x") or std.mem.startsWith(u8, text, "0X");
+            if (!hex and (text.len > 1 and text[0] == '0')) return error.BadNumber;
+            if (std.mem.indexOfScalar(u8, text, '_') != null) return error.BadNumber;
+            const value = std.fmt.parseInt(u32, if (hex) text[2..] else text, if (hex) 16 else 10) catch return error.BadNumber;
             try toks.append(alloc, .{ .kind = .num, .text = source[start..i], .num = value, .line = line });
         } else if (isNameChar(c)) {
             while (i < source.len and isNameChar(source[i])) i += 1;
@@ -619,6 +648,13 @@ fn cLex(alloc: std.mem.Allocator, source: []const u8) ![]CToken {
             i += 1;
             while (i < source.len and source[i] != '"') {
                 if (source[i] == '\n') return error.UnterminatedString;
+                // an escape must be one we know (the same as for 'a'),
+                // and the assembler (216) knows the same ones, except \'
+                if (source[i] == '\\' and i + 1 < source.len) {
+                    if (source[i + 1] == '\n') return error.UnterminatedString;
+                    _ = try cEscape(source[i + 1]);
+                    if (source[i + 1] == '\'') return error.BadEscape;
+                }
                 i += if (source[i] == '\\') 2 else 1;
             }
             if (i >= source.len) return error.UnterminatedString;

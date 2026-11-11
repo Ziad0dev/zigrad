@@ -1,7 +1,3 @@
-// HARD MODE (zig build -Dhard): no blanks to fill in. Every function
-// marked ??? has lost its whole body: write it, from its doc comment,
-// its signature and the tests. The gentler version of this file is in
-// exercises/, and the answer in solutions/.
 //
 // ─── Exercise 023: topological order ───────────────────────────────────
 //
@@ -62,7 +58,10 @@ const Sorter = struct {
     order: std.ArrayList(*const Node) = .empty,
 
     fn visit(s: *Sorter, n: *const Node) error{OutOfMemory}!void {
-        ???; // write this function's body
+        if (s.visited.contains(n)) return;
+        try s.visited.put(n, {});
+        try s.order.append(s.alloc, n);
+        for (n.src) |src| try s.visit(src);
     }
 };
 

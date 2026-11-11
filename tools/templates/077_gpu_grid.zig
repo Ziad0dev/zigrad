@@ -29,6 +29,9 @@ fn blocksNeeded(n: usize, bs: usize) usize {
     return ⟪(n + bs - 1) / bs|||???⟫;
 }
 
+/// What a launch did. `threads`: every thread the grid started, idle
+/// ones included. `idle`: the threads that the bounds check sent home
+/// without work (they fall past the end of the data).
 const Stats = struct { threads: usize = 0, idle: usize = 0 };
 
 /// c = a + b, run as a grid of blocks of `bs` threads.
@@ -86,8 +89,13 @@ test "2D" {
     var in: [5 * 7]f32 = undefined;
     for (&in, 0..) |*x, i| x.* = @floatFromInt(i);
     var out: [7 * 5]f32 = undefined;
-    launchTranspose(&in, 5, 7, &out, 4, 4);
-    for (0..5) |r| {
-        for (0..7) |col| try std.testing.expectEqual(in[r * 7 + col], out[col * 5 + r]);
+    // blocks of different widths and heights, so that x and y can't be
+    // mixed up: 4 wide (x, columns) and 2 high (y, rows)
+    for ([_][2]usize{ .{ 4, 4 }, .{ 4, 2 }, .{ 2, 4 }, .{ 8, 1 } }) |b| {
+        @memset(&out, -1);
+        launchTranspose(&in, 5, 7, &out, b[0], b[1]);
+        for (0..5) |r| {
+            for (0..7) |col| try std.testing.expectEqual(in[r * 7 + col], out[col * 5 + r]);
+        }
     }
 }

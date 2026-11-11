@@ -159,7 +159,8 @@ fn run(k: Kernel, inputs: []const []const f32, out: []f32, regs: []f32, n: usize
 fn realize(alloc: std.mem.Allocator, root: *const Node, memory: *std.AutoHashMap(*const Node, []f32)) ![]f32 {
     for (try schedule(alloc, root)) |node| {
         // The subgraph for this kernel stops at already-computed buffers.
-        const kernel_root = try cutAtComputed(alloc, node, memory);
+        var copies = std.AutoHashMap(*const Node, *const Node).init(alloc);
+        const kernel_root = try cutAtComputed(alloc, node, memory, &copies);
         const k = try linearize(alloc, kernel_root);
 
         var inputs = try alloc.alloc([]const f32, k.inputs.len);
@@ -195,24 +196,55 @@ fn toposort(alloc: std.mem.Allocator, n: *const Node, visited: *std.AutoHashMap(
 }
 
 /// A copy of n's graph where anything already in `memory` (like an
-/// earlier kernel's sum) is replaced by a plain buffer node.
-fn cutAtComputed(alloc: std.mem.Allocator, n: *const Node, memory: *std.AutoHashMap(*const Node, []f32)) error{OutOfMemory}!*const Node {
+/// earlier kernel's sum) is replaced by a plain buffer node. `copies`
+/// remembers what has been copied, so that a node used twice is copied
+/// once and stays ONE node (which 041's linearize relies on).
+fn cutAtComputed(alloc: std.mem.Allocator, n: *const Node, memory: *std.AutoHashMap(*const Node, []f32), copies: *std.AutoHashMap(*const Node, *const Node)) error{OutOfMemory}!*const Node {
     if (n.op == .buffer or n.op == .constant) return n;
+    if (copies.get(n)) |done| return done;
     const src = try alloc.alloc(*const Node, n.src.len);
     for (n.src, src) |s, *out| {
         if (s.op != .buffer and memory.contains(s)) {
+            if (copies.get(s)) |b| {
+                out.* = b;
+                continue;
+            }
             const b = try alloc.create(Node);
             b.* = .{ .op = .buffer, .len = s.len };
             try memory.put(b, memory.get(s).?);
+            try copies.put(s, b);
             out.* = b;
         } else {
-            out.* = try cutAtComputed(alloc, s, memory);
+            out.* = try cutAtComputed(alloc, s, memory, copies);
         }
     }
     const copy = try alloc.create(Node);
     copy.* = n.*;
     copy.src = src;
+    try copies.put(n, copy);
     return copy;
+}
+
+test "a node used many times is still one node" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+    const g: Graph = .{ .alloc = alloc };
+    var a = [_]f32{ 1, 2 };
+    const an = g.buffer("a", 2);
+    var memory = std.AutoHashMap(*const Node, []f32).init(alloc);
+    try memory.put(an, &a);
+    // x + x, forty times over: 41 nodes, but 2^40 paths from the top.
+    // Copied path by path, this would never finish.
+    var x = an;
+    for (0..40) |_| x = g.add(x, x);
+    const big = std.math.pow(f32, 2, 40);
+    const squares = try realize(alloc, g.mul(x, x), &memory);
+    try std.testing.expectEqualSlices(f32, &.{ big * big, 4 * big * big }, squares);
+    // and a computed sum read twice by the next kernel
+    const s = g.sum(x);
+    const twice = try realize(alloc, g.add(s, s), &memory);
+    try std.testing.expectEqualSlices(f32, &.{6 * big}, twice);
 }
 
 test "an elementwise kernel" {

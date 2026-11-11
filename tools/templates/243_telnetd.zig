@@ -89,8 +89,9 @@ const Session = struct {
 
 /// Boots the shell behind a telnetd, connects to it over `wire`, types
 /// the lines of `typed` (a new one every few rounds, like a person
-/// would), and returns what came back.
-fn login(wire: *Wire, typed: []const u8) !Session {
+/// would), and returns what came back. The machine runs `steps`
+/// instructions per poll.
+fn loginPaced(wire: *Wire, typed: []const u8, steps: usize) !Session {
     const image = try buildProgram(ta, &.{ shell_c, libc_c }, &.{}, 0);
     defer ta.free(image);
     var board = try Board.init(ta, 0x10000);
@@ -109,7 +110,7 @@ fn login(wire: *Wire, typed: []const u8) !Session {
     var lines = std.mem.splitScalar(u8, typed, '\n');
     var rounds: usize = 0;
     while (!(client.peer_closed and server.fin_acked)) : (rounds += 1) {
-        if (rounds == 3000) return error.TooSlow;
+        if (rounds == 30_000) return error.TooSlow;
         if (rounds % 6 == 0) {
             if (lines.next()) |line| {
                 try client.send(line);
@@ -117,9 +118,13 @@ fn login(wire: *Wire, typed: []const u8) !Session {
             }
         }
         try wire.round(&client, &server);
-        try telnetd.poll(20_000);
+        try telnetd.poll(steps);
     }
     return .{ .transcript = try ta.dupe(u8, client.received.items), .retransmissions = client.retransmissions + server.retransmissions };
+}
+
+fn login(wire: *Wire, typed: []const u8) !Session {
+    return loginPaced(wire, typed, 20_000);
 }
 
 const typed_script =
@@ -158,7 +163,9 @@ test "the same session over a terrible one" {
 test "a long line, typed faster than the machine reads" {
     var prng = std.Random.DefaultPrng.init(2431);
     var wire: Wire = .{ .rand = prng.random() };
-    const session = try login(&wire, "echo " ++ "abcdefghi " ** 6 ++ "\nexit\n");
+    // 100 instructions per poll: far too few to read a 66-key line in
+    // one go, so keys wait, unread, from one poll to the next
+    const session = try loginPaced(&wire, "echo " ++ "abcdefghi " ** 6 ++ "\nexit\n", 100);
     defer ta.free(session.transcript);
     try expectEqualStrings("$ " ++ "abcdefghi " ** 5 ++ "abcdefghi\n$ ", session.transcript);
 }

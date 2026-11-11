@@ -94,6 +94,15 @@ const Sched = struct {
     }
 
     /// tinygrad's shift_to: split r, of n values, into n/amt and amt.
+    /// Checks, in this order and with these messages in `why` (the
+    /// tests compare them): that the type may be split off (split_targets:
+    /// "that type can't be split off that range"), that 1 < amt and amt
+    /// divides n ("amt can't divide the range"), and for UPCAST the size
+    /// limits ("don't unroll more than 32" on a reduce range, "don't
+    /// upcast more than 16" otherwise). The new range of amt gets the
+    /// next slot, and its type goes into `types`; the old range keeps its
+    /// slot, now n/amt long. `top` puts the new range outside: new *
+    /// (n/amt) + old; otherwise old * amt + new.
     fn shiftTo(s: *Sched, r: *const UOp, amt: usize, new_type: AxisType, top: bool) OptError!struct { old: *const UOp, new: *const UOp } {
         const g = s.g;
         const old_type = s.typeOf(r);

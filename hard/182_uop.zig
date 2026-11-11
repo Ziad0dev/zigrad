@@ -427,11 +427,13 @@ fn shapeOf(g: *Graph, op: Op, src: []const *const UOp, arg: Arg) Error![]const u
             return sizes;
         },
         .reduce => {
+            if (arg.reduce.op != .add and arg.reduce.op != .mul and arg.reduce.op != .max) return g.fail("REDUCE's op must be add, mul or max");
             const pop = arg.reduce.pop;
             if (pop > src[0].shape.len) return g.fail("REDUCE pops more axes than there are");
             return ???;
         },
         .stage => {
+            for (src[1..]) |r| if (r.op != .range) return g.fail("STAGE's axes are RANGEs");
             var front: []const usize = &.{};
             for (src[1..]) |r| front = g.cat(front, &.{@intCast(r.src[0].intValue().?)});
             return g.cat(front, src[0].shape);
@@ -538,6 +540,8 @@ test "what the spec rejects" {
     try t.expectError(error.Spec, g.add(x, g.ints(&.{ 1, 2, 3 }))); // (2, 3) + (3,)
     try t.expectError(error.Spec, g.permute(x, &.{ 0, 0 }));
     try t.expectError(error.Spec, g.reduce(x, .add, 3));
+    try t.expectError(error.Spec, g.reduce(x, .xor, 1)); // only add, mul and max reduce
+    try t.expectError(error.Spec, g.stage(x, &.{g.int(2)})); // a STAGE's axes are RANGEs
     try t.expectError(error.Spec, g.reshape(x, &.{ 4, 2 }));
     try t.expectError(error.Spec, g.index(x, &.{ g.int(0), g.int(0), g.int(0) }));
     try t.expectError(error.Spec, g.index(x, &.{g.float(1)}));

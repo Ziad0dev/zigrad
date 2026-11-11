@@ -148,6 +148,10 @@ test "summing an array: three addressing modes" {
         \\        ldr   r9, [r8]
         \\        ldr   r10, [r8, #-12]       @ numbers[3], from the other side
         \\        ldr   r6, [r6]              @ rn and rd the same: the load wins
+        \\        ldr   r11, =numbers
+        \\        ldr   r11, [r11], #4        @ ...also when rn is written back: rd gets the load
+        \\        ldr   r12, =numbers
+        \\        ldr   r12, [r12, #8]!       @ (real ARMs call these "unpredictable": ours decide)
         \\        swi   0
         \\numbers: .word 0x102, 0x304, 0x506, 0x708
         \\result: .word 0
@@ -235,7 +239,18 @@ fn simulate(gpa: std.mem.Allocator, source: []const u8) ![]u8 {
         return error.VerilogError;
     }
     // 2. ...and run it. -n: stop at $finish instead of asking what to do.
-    const ran = try std.process.run(alloc, io, .{ .argv = &.{ "vvp", "-n", vvp_path }, .cwd = .{ .path = dir } });
+    // A design can run forever (a bench that never reaches $finish, a
+    // loop of gates that never settles), so give it a minute; run() stops
+    // the simulator when the time is up.
+    const minute: std.Io.Timeout = .{ .duration = .{ .raw = .fromSeconds(60), .clock = .awake } };
+    const ran = std.process.run(alloc, io, .{
+        .argv = &.{ "vvp", "-n", vvp_path },
+        .cwd = .{ .path = dir },
+        .timeout = minute.toDeadline(io),
+    }) catch |err| {
+        if (err == error.Timeout) std.debug.print("the simulation was still running after a minute: does it reach $finish?\n", .{});
+        return err;
+    };
     if (ran.term != .exited or ran.term.exited != 0) {
         std.debug.print("vvp failed:\n{s}\n{s}\n", .{ ran.stdout, ran.stderr });
         return error.SimulationFailed;
@@ -861,9 +876,16 @@ fn alignUp(addr: u32, to: u32) u32 {
     return (addr + to - 1) & ~(to - 1);
 }
 
-/// How many comma-separated things follow.
+/// How many comma-separated things follow. (The comma in ',' is a
+/// character, not a separator.)
 fn countItems(sc: *Scanner) u32 {
-    return @intCast(std.mem.count(u8, sc.text[sc.at..], ",") + 1);
+    const rest = sc.text[sc.at..];
+    var count: u32 = 1;
+    for (rest, 0..) |c, i| {
+        const quoted = i > 0 and i + 1 < rest.len and rest[i - 1] == '\'' and rest[i + 1] == '\'';
+        if (c == ',' and !quoted) count += 1;
+    }
+    return count;
 }
 
 /// The bytes of a quoted string, with \n, \t, \r, \0, \\ and \" decoded.
@@ -1672,7 +1694,10 @@ const Cosim = struct { instructions: usize, cycles: usize };
 
 /// Runs the assembly `source` on the Verilog CPU and on 218's emulator,
 /// from address 0, until a swi, and checks that they agree after every
-/// instruction.
+/// instruction. Stay inside what 218's emulator implements (what 216's
+/// assembler writes): the Verilog CPU decodes some other bit patterns
+/// too (a multiply with bit 21 set, a compare without S), and the two
+/// would part ways there.
 fn cosim(cpu_verilog: []const u8, source: []const u8) !Cosim {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -1701,6 +1726,13 @@ fn cosim(cpu_verilog: []const u8, source: []const u8) !Cosim {
         const event = cpu.step(&board);
         const line = lines.next() orelse "(nothing: the simulation ended)";
         if (event != .ok) {
+            if (event != .swi) {
+                // not the end of the program: an instruction the emulator
+                // doesn't do (a test that strays outside the subset both
+                // CPUs implement), or a bad address
+                std.debug.print("\nafter {d} instructions the emulator stopped ({any}) at pc 0x{x}, instruction 0x{x:0>8}\n", .{ count, event, pc, insn });
+                return error.CpusDisagree;
+            }
             // the emulator has reached the swi: so must the Verilog have
             if (std.mem.startsWith(u8, line, "halted ")) {
                 return .{ .instructions = count, .cycles = try std.fmt.parseInt(usize, line["halted ".len..], 10) };

@@ -47,6 +47,12 @@ const Kernel = struct {
 
 const Limit = enum { threads, blocks, registers, shared };
 
+/// How many blocks of `k` fit on one SM at once, and which resource ran
+/// out first. Each limit (threads, registers, shared memory) gives a
+/// count, and the smallest wins; the SM's own cap on blocks counts too.
+/// A tie goes to whichever comes first in that order: .blocks if
+/// nothing is tighter than the cap, then .threads, .registers, .shared
+/// (so a limit only takes over when it is strictly smaller).
 fn blocksPerSM(sm: SM, k: Kernel) struct { blocks: usize, limit: Limit } {
     ???; // write this function's body
 }

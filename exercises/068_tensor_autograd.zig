@@ -218,6 +218,38 @@ test "gradient check of a two-layer network" {
     }
 }
 
+/// sum( relu(x) ⊙ (x + bias) ): x feeds two ops, so its gradient is
+/// the sum of what each one sends back. (`flip` swaps the two factors,
+/// so that each op gets to send its gradient back first once.)
+fn twiceLoss(e: Engine, x: *Tensor, bias: *Tensor, flip: bool) *Tensor {
+    const r = e.relu(x);
+    const s = e.addBias(x, bias);
+    return e.sum(if (flip) e.mul(s, r) else e.mul(r, s));
+}
+
+test "a tensor used twice gets both gradients" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const e: Engine = .{ .alloc = arena.allocator() };
+    for ([_]bool{ false, true }) |flip| {
+        const x = e.tensor(2, 3, &.{ 1, -2, 0.5, 3, -0.25, 2 });
+        const bias = e.tensor(1, 3, &.{ 0.5, 1, -1 });
+        e.backward(twiceLoss(e, x, bias, flip));
+        const h = 1e-6;
+        for ([_]*Tensor{ x, bias }) |param| {
+            for (param.data, param.grad) |*w, g| {
+                const orig = w.*;
+                w.* = orig + h;
+                const up = twiceLoss(e, x, bias, flip).data[0];
+                w.* = orig - h;
+                const down = twiceLoss(e, x, bias, flip).data[0];
+                w.* = orig;
+                try std.testing.expectApproxEqAbs((up - down) / (2 * h), g, 1e-6);
+            }
+        }
+    }
+}
+
 test "relu at exactly 0 passes no gradient" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();

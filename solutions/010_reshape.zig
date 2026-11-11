@@ -91,21 +91,29 @@ const View = struct {
     }
 };
 
-/// Replace a -1 in `shape` with the size that makes `numel` fit.
+/// Replace a -1 in `shape` with the size that makes `numel` fit. At
+/// most one -1, and no other negative sizes.
 fn inferShape(numel: usize, shape: []const isize, out: []usize) error{ShapeMismatch}!void {
     var known: usize = 1;
     var unknown_axis: ?usize = null;
     for (shape, 0..) |d, i| {
-        if (d == -1) {
+        if (d == -1 and unknown_axis == null) {
             unknown_axis = i;
         } else {
+            if (d < 0) return error.ShapeMismatch;
             out[i] = @intCast(d);
             known *= out[i];
         }
     }
-    if (unknown_axis) |i| out[i] = numel / known;
-    // Not every shape works: 6 numbers can't be [4, -1] (6 / 4 isn't whole).
-    if (product(out) != numel) return error.ShapeMismatch;
+    if (unknown_axis) |i| {
+        // [0, -1] could be any size at all: there is no answer
+        if (known == 0) return error.ShapeMismatch;
+        out[i] = numel / known;
+    }
+    // Not every shape works. With a -1, the division may not come out
+    // whole: 6 numbers can't be [4, -1]. Without one, the sizes may just
+    // be wrong: 6 numbers can't be [1, 2] either. One check covers both.
+    if (product(out[0..shape.len]) != numel) return error.ShapeMismatch;
 }
 
 const max_dims = 4;
@@ -148,6 +156,18 @@ test "infer a -1" {
     try inferShape(6, &.{ -1, 6 }, &out);
     try std.testing.expectEqualSlices(usize, &.{ 1, 6 }, &out);
     try std.testing.expectError(error.ShapeMismatch, inferShape(6, &.{ 4, -1 }, &out));
+    // no -1 at all: the sizes are checked as they are
+    try inferShape(6, &.{ 2, 3 }, &out);
+    try std.testing.expectEqualSlices(usize, &.{ 2, 3 }, &out);
+    try std.testing.expectError(error.ShapeMismatch, inferShape(6, &.{ 1, 2 }, &out));
+    try std.testing.expectError(error.ShapeMismatch, inferShape(6, &.{ 1, 3 }, &out));
+    // shapes that make no sense
+    try std.testing.expectError(error.ShapeMismatch, inferShape(6, &.{ -1, -1 }, &out));
+    try std.testing.expectError(error.ShapeMismatch, inferShape(6, &.{ -2, -3 }, &out));
+    try std.testing.expectError(error.ShapeMismatch, inferShape(0, &.{ 0, -1 }, &out));
+    // an empty tensor can still be reshaped
+    try inferShape(0, &.{ 3, 0 }, &out);
+    try std.testing.expectEqualSlices(usize, &.{ 3, 0 }, &out);
 }
 
 test "reshape changes the view, not the memory" {

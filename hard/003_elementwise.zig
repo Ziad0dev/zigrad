@@ -63,6 +63,7 @@ test "elementwise ops" {
     relu(&out, &a);
     try std.testing.expectEqualSlices(f32, &.{ 1, 0, 3 }, &out);
 
-    mulAdd(&out, &a, &b, &a);
-    try std.testing.expectEqualSlices(f32, &.{ 11, -42, 93 }, &out);
+    const c = [_]f32{ 100, 200, 300 };
+    mulAdd(&out, &a, &b, &c); // a * b + c
+    try std.testing.expectEqualSlices(f32, &.{ 110, 160, 390 }, &out);
 }

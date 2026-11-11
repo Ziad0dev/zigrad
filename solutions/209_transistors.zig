@@ -104,7 +104,9 @@ fn andGate(a: bool, b: bool) bool {
     return not(nand(a, b));
 }
 
-/// OR, by De Morgan: a or b = not(not a and not b).
+/// OR, by De Morgan: a or b = not(not a and not b). Count the NANDs,
+/// though: not(and(...)) inverts twice, and the adder test below counts
+/// every transistor. nand(not a, not b) is the same thing in 3 NANDs.
 fn orGate(a: bool, b: bool) bool {
     return nand(not(a), not(b));
 }

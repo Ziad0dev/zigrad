@@ -69,13 +69,15 @@ test "about a fraction p is dropped" {
 
 test "the expected value is preserved" {
     const x = [_]f64{ 2, -1, 0.5 };
-    var sum: [3]f64 = @splat(0);
-    for (0..20_000) |step| {
-        var y: [3]f64 = undefined;
-        dropout(&x, &y, 0.5, step, true); // a fresh mask every step
-        for (&sum, y) |*s, v| s.* += v / 20_000;
+    for ([_]f64{ 0.5, 0.2, 0.7 }) |p| {
+        var sum: [3]f64 = @splat(0);
+        for (0..20_000) |step| {
+            var y: [3]f64 = undefined;
+            dropout(&x, &y, p, step, true); // a fresh mask every step
+            for (&sum, y) |*s, v| s.* += v / 20_000;
+        }
+        for (x, sum) |v, avg| try std.testing.expectApproxEqAbs(v, avg, 0.06);
     }
-    for (x, sum) |v, avg| try std.testing.expectApproxEqAbs(v, avg, 0.05);
 }
 
 test "eval mode does nothing" {
@@ -89,7 +91,9 @@ test "backward uses the same mask" {
     const x = [_]f64{ 1, 1, 1, 1, 1, 1, 1, 1 };
     var y: [8]f64 = undefined;
     var dx: [8]f64 = undefined;
-    dropout(&x, &y, 0.5, 42, true);
-    dropoutBackward(&x, &dx, 0.5, 42); // dy = 1 everywhere
+    dropout(&x, &y, 0.3, 42, true);
+    dropoutBackward(&x, &dx, 0.3, 42); // dy = 1 everywhere
     try std.testing.expectEqualSlices(f64, &y, &dx);
+    // each survivor's gradient is scaled like its value: by 1 / (1 - p)
+    for (dx) |g| try std.testing.expect(g == 0 or @abs(g - 1.0 / 0.7) < 1e-12);
 }

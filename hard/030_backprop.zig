@@ -68,7 +68,20 @@ const Engine = struct {
     }
 
     fn backward(e: Engine, root: *Value) void {
-        ???; // write this function's body
+        // 1. topological order (exercise 023)
+        var visited = std.AutoHashMap(*Value, void).init(e.alloc);
+        var order: std.ArrayList(*Value) = .empty;
+        topo(e.alloc, root, &visited, &order);
+
+        // 2. d(root)/d(root)
+        root.grad = 0;
+
+        // 3. walk backwards
+        var i = order.items.len;
+        while (i > 0) {
+            i -= 1;
+            passGrad(order.items[i]);
+        }
     }
 };
 

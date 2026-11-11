@@ -156,10 +156,13 @@ const Interp = struct {
     }
 
     /// Start the loops over `ranges`. False if some range is empty.
-    fn startLoops(it: *Interp, ranges: []const *const UOp, counters: []i64) bool {
+    fn startLoops(it: *Interp, ranges: []const *const UOp, counters: []i64) RunError!bool {
         @memset(counters, 0);
         for (ranges) |r| {
-            if (r.op != .range) return false;
+            // (a constant here would mean "no loop at all": an easy slip
+            // when an axis of size 1 was given the index 0, and one that
+            // would otherwise silently run nothing)
+            if (r.op != .range) return it.fail(error.Spec, "END and REDUCE loop over RANGEs, and only RANGEs");
             if (r.src[0].intValue().? <= 0) return false;
         }
         it.varying.clearRetainingCapacity();
@@ -230,7 +233,7 @@ const Interp = struct {
             .end => {
                 const ranges = u.src[1..];
                 const counters = it.g.alloc.alloc(i64, ranges.len) catch @panic("out of memory");
-                if (it.startLoops(ranges, counters)) {
+                if (try it.startLoops(ranges, counters)) {
                     while (true) {
                         ???;
                         if (!it.step(ranges, counters)) break;
@@ -288,7 +291,7 @@ const Interp = struct {
                 const v = it.alloc(u.dtype, u.shape);
                 const counters = it.g.alloc.alloc(i64, ranges.len) catch @panic("out of memory");
                 var at: usize = 0;
-                if (it.startLoops(ranges, counters)) {
+                if (try it.startLoops(ranges, counters)) {
                     while (true) {
                         const x = try it.eval(u.src[0]);
                         @memcpy(v.data[at .. at + x.data.len], x.data);
@@ -399,6 +402,10 @@ test "week 1: values" {
     try expectRuns("%x = index [10 20 30] 2\n%t = assert %x 30");
     try expectRuns("%x = where (cmplt 1 2) 7 9\n%t = assert %x 7");
     try expectRuns("%x = add (cast 2147483647 dtype=i32) 1\n%t = assert %x -2147483648");
+    // memory takes one int, not a tensor of them
+    try expectFails(error.Spec, "%buf = buffer 3 slot=0 dtype=i32\n%x = load (index %buf [0 2])");
+    // an END over something that isn't a loop
+    try expectFails(error.Spec, "%buf = buffer 3 slot=0 dtype=i32\n%w = store (index %buf 0) 1\n%d = end %w 3");
 }
 
 test "week 2: store, then load through AFTER" {
@@ -937,11 +944,13 @@ fn shapeOf(g: *Graph, op: Op, src: []const *const UOp, arg: Arg) Error![]const u
             return sizes;
         },
         .reduce => {
+            if (arg.reduce.op != .add and arg.reduce.op != .mul and arg.reduce.op != .max) return g.fail("REDUCE's op must be add, mul or max");
             const pop = arg.reduce.pop;
             if (pop > src[0].shape.len) return g.fail("REDUCE pops more axes than there are");
             return src[0].shape[pop..];
         },
         .stage => {
+            for (src[1..]) |r| if (r.op != .range) return g.fail("STAGE's axes are RANGEs");
             var front: []const usize = &.{};
             for (src[1..]) |r| front = g.cat(front, &.{@intCast(r.src[0].intValue().?)});
             return g.cat(front, src[0].shape);
@@ -1002,7 +1011,14 @@ fn wrapI32(x: i64) i64 {
     return @as(i32, @truncate(x));
 }
 
+/// Towards zero, like C. Where C gives up (NaN, or a number too big for
+/// any int: undefined behaviour), we pick an answer instead of
+/// crashing: NaN is 0, and the rest stop at the largest i64.
 fn toInt(x: f64) i64 {
+    if (std.math.isNan(x)) return 0;
+    const limit: f64 = @floatFromInt(std.math.maxInt(i64));
+    if (x >= limit) return std.math.maxInt(i64);
+    if (x <= -limit) return std.math.minInt(i64);
     return @intFromFloat(@trunc(x));
 }
 

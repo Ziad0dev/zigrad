@@ -57,6 +57,10 @@ test "the signal fades to nothing" {
     try std.testing.expect(ab[0] > 0.999);
     try std.testing.expect(ab[steps - 1] < 1e-4);
     for (1..steps) |t| try std.testing.expect(ab[t] < ab[t - 1]);
+    // exactly: step t's own alpha is in ab[t], and every one before it
+    try std.testing.expectApproxEqAbs(1 - betaAt(0), ab[0], 1e-15);
+    try std.testing.expectApproxEqAbs((1 - betaAt(0)) * (1 - betaAt(1)) * (1 - betaAt(2)), ab[2], 1e-15);
+    for (1..steps) |t| try std.testing.expectApproxEqAbs(ab[t - 1] * (1 - betaAt(t)), ab[t], 1e-15);
 }
 
 test "one shot equals step by step" {

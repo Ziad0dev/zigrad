@@ -26,7 +26,7 @@
 // out of memory, which we treat as a crash.
 //
 // YOUR TASK: finish eval(). Then run the tests: the Evaluator computes
-// the right answer, but far too slowly. Why?
+// the right answer, but with far too many calls. Why?
 //
 const std = @import("std");
 

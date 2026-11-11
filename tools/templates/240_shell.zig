@@ -24,7 +24,7 @@
 //           argv[0]  argv[1]                    argc = 2
 //
 // The commands here work on a small file system that lives in memory:
-// eight files of up to 255 bytes, in three arrays. (The calls it offers,
+// eight files of up to 255 bytes, in four arrays. (The calls it offers,
 // find a name, read, create, delete, are the ones 239's FAT offers too.
 // A shell doesn't care what is underneath. Swapping this for FAT on the
 // SD card, in C, is the natural next step from here.)

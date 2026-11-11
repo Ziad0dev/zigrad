@@ -74,6 +74,15 @@ test "rotation keeps lengths" {
     var r: [6]f64 = undefined;
     rope(&query, 17, &r);
     try std.testing.expectApproxEqAbs(dot(&query, &query), dot(&r, &r), 1e-12);
+    // at position 0 nothing turns
+    rope(&query, 0, &r);
+    for (query, r) |want, got| try std.testing.expectApproxEqAbs(want, got, 1e-12);
+    // the first pair turns by exactly t radians, counterclockwise:
+    // (1, 0) goes to (cos t, sin t)
+    var unit: [2]f64 = undefined;
+    rope(&.{ 1, 0 }, 0.7, &unit);
+    try std.testing.expectApproxEqAbs(@cos(0.7), unit[0], 1e-12);
+    try std.testing.expectApproxEqAbs(@sin(0.7), unit[1], 1e-12);
 }
 
 test "RoPE scores only see relative position" {

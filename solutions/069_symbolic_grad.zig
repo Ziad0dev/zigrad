@@ -163,6 +163,11 @@ fn toposort(alloc: std.mem.Allocator, n: *const Node, visited: *std.AutoHashMap(
     try order.append(alloc, n);
 }
 
+/// d(root)/d(wrt), as a simplified graph. 030's backward, with nodes for
+/// numbers: root's gradient is constant(1); walk the topological order
+/// backwards, and each node adds what it owes its sources with
+/// Backprop.acc. The answer is wrt's gradient, simplified (constant(0)
+/// if wrt isn't in the graph at all).
 fn grad(g: *Graph, root: *const Node, wrt: *const Node) !*const Node {
     var visited = std.AutoHashMap(*const Node, void).init(g.alloc);
     var order: std.ArrayList(*const Node) = .empty;
@@ -221,8 +226,12 @@ test "d/dx (x*x + 3*x) = 2x + 3" {
     const f = g.add(g.mul(x, x), g.mul(g.constant(3), x));
     const df = try grad(&g, f, x);
     for ([_]f64{ -2, 0, 1.5, 10 }) |v| try std.testing.expectApproxEqAbs(2 * v + 3, eval(df, v), 1e-12);
-    // the simplified graph has no (1 * ...) left in it
-    try expectRender("((3 + x) + x)", df);
+    // the simplified graph has no (1 * ...) or (... + 0) left in it,
+    // whichever order its terms came in
+    var buf: [256]u8 = undefined;
+    var w: std.Io.Writer = .fixed(&buf);
+    try render(df, &w);
+    for ([_][]const u8{ "1 *", "* 1", "0" }) |leftover| try std.testing.expect(std.mem.indexOf(u8, w.buffered(), leftover) == null);
 }
 
 test "d/dx sin(x) * x = cos(x) * x + sin(x)" {

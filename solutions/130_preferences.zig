@@ -51,6 +51,9 @@ test "Bradley-Terry" {
     try std.testing.expectApproxEqAbs(0.5, preferProb(2, 2), 1e-12);
     try std.testing.expect(preferProb(3, 1) > 0.88);
     try std.testing.expectApproxEqAbs(@log(2.0), rewardModelLoss(1, 1), 1e-12);
+    // the winner scored 2 more: small loss; the loser scored 2 more: big
+    try std.testing.expectApproxEqAbs(-@log(sigmoid(2)), rewardModelLoss(3, 1), 1e-12);
+    try std.testing.expectApproxEqAbs(-@log(sigmoid(-2)), rewardModelLoss(1, 3), 1e-12);
 }
 
 test "DPO starts at log 2, and falls as the winner gains" {
@@ -58,6 +61,10 @@ test "DPO starts at log 2, and falls as the winner gains" {
     try std.testing.expectApproxEqAbs(@log(2.0), dpoLoss(-5, -6, -5, -6, 0.1), 1e-12);
     // winner more likely than under the reference, loser less likely
     try std.testing.expect(dpoLoss(-4, -7, -5, -6, 0.1) < @log(2.0));
+    // exactly: the winner gained 1, the loser lost 1, so the margin is
+    // beta * (1 - (-1)) = 0.2
+    try std.testing.expectApproxEqAbs(-@log(sigmoid(0.2)), dpoLoss(-4, -7, -5, -6, 0.1), 1e-12);
+    try std.testing.expectApproxEqAbs(-@log(sigmoid(1.0)), dpoLoss(-4, -7, -5, -6, 0.5), 1e-12);
     // the wrong way round: worse than log 2
     try std.testing.expect(dpoLoss(-6, -5, -5, -6, 0.1) > @log(2.0));
 }

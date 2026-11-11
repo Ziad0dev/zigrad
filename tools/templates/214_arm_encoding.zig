@@ -37,7 +37,9 @@
 //  branch:          cond 101 L offset(24)
 //     jump to pc + 8 + 4 * offset (signed). L: put the return address in lr.
 //     Why + 8? By the time an ARM7 executes an instruction it has already
-//     fetched two more, so its pc register is two instructions ahead (221).
+//     fetched two more, so its pc register is two instructions ahead.
+//     (Our own processor, in 220, has no pipeline, and simply reads pc + 8
+//     for r15 to match.)
 //  software interrupt (a system call):  cond 1111 number(24)
 //
 // Every golden value in the tests is what LLVM's assembler produces for

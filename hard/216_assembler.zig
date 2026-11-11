@@ -136,9 +136,16 @@ fn alignUp(addr: u32, to: u32) u32 {
     ???; // write this function's body
 }
 
-/// How many comma-separated things follow.
+/// How many comma-separated things follow. (The comma in ',' is a
+/// character, not a separator.)
 fn countItems(sc: *Scanner) u32 {
-    return @intCast(std.mem.count(u8, sc.text[sc.at..], ",") + 1);
+    const rest = sc.text[sc.at..];
+    var count: u32 = 1;
+    for (rest, 0..) |c, i| {
+        const quoted = i > 0 and i + 1 < rest.len and rest[i - 1] == '\'' and rest[i + 1] == '\'';
+        if (c == ',' and !quoted) count += 1;
+    }
+    return count;
 }
 
 /// The bytes of a quoted string, with \n, \t, \r, \0, \\ and \" decoded.
@@ -458,6 +465,20 @@ test "mistakes come with a line number" {
     try expectError(error.ImmediateDoesNotFit, assemble(ta, "mov r0, #1\nmov r0, #257", 0, &line));
     try expectEqual(@as(usize, 2), line);
     try expectError(error.BadOperand, assemble(ta, ".word 1 2", 0, &line));
+}
+
+test "a comma that is a character, not a separator" {
+    var line: usize = 0;
+    var prog = try assemble(ta,
+        \\        .byte ',', 'a', ','
+        \\after:  .byte 1
+        \\        .word ',', after
+    , 0x100, &line);
+    defer prog.deinit(ta);
+    try expectEqual(@as(usize, 12), prog.code.len);
+    try expectEqual(@as(u32, 0x012c612c), prog.word(0x100));
+    try expectEqual(@as(u32, ','), prog.word(0x104));
+    try expectEqual(@as(u32, 0x103), prog.word(0x108));
 }
 
 test "the judge: a whole file, byte for byte" {

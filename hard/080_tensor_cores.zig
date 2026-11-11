@@ -47,9 +47,10 @@ fn matmulTC(a: []const f32, b: []const f32, m: usize, k: usize, n: usize, out: [
 }
 
 test "tensor-core matmul" {
+    // three different sizes, so that no index can use the wrong one
     const m = 8;
     const k = 12;
-    const n = 8;
+    const n = 4;
     var a: [m * k]f32 = undefined;
     var b: [k * n]f32 = undefined;
     for (&a, 0..) |*x, i| x.* = @as(f32, @floatFromInt(i % 9)) * 0.1 - 0.4;
