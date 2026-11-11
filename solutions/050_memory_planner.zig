@@ -115,6 +115,23 @@ test "a buffer stays alive until its last reader" {
     try std.testing.expectEqual(slot_of[1], slot_of[4]);
 }
 
+test "a free slot is chosen by ITS size" {
+    // When step 4 runs, the free list holds one slot of 10 floats, and
+    // it isn't slot 0 (slot 0 holds 20). Buffer 4 wants 20: it must get
+    // a new slot, not the 10-float one.
+    const sizes = [_]usize{ 10, 20, 10, 10, 20 };
+    const steps = [_]Step{
+        .{ .out = 1, .reads = &.{0} },
+        .{ .out = 2, .reads = &.{0} },
+        .{ .out = 3, .reads = &.{2} },
+        .{ .out = 4, .reads = &.{ 1, 3 } },
+    };
+    var slot_of: [5]usize = undefined;
+    const total = try plan(std.testing.allocator, &steps, &sizes, &slot_of);
+    try std.testing.expectEqual(60, total);
+    try std.testing.expect(slot_of[4] != slot_of[2]);
+}
+
 test "different sizes don't share" {
     const sizes = [_]usize{ 10, 10, 20, 10 };
     const steps = [_]Step{

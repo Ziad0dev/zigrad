@@ -137,6 +137,17 @@ fn linearize(alloc: std.mem.Allocator, root: *const Node) !Kernel {
     return .{ .insts = l.insts.items, .inputs = l.inputs.items, .reduce = reduce };
 }
 
+/// A constant as C reads it. Plain decimals for ordinary numbers. Very
+/// big or very small ones in scientific notation (1e30 written out is
+/// an integer too big for C). And C has no spelling for infinity or NaN
+/// without math.h, so they use the compiler's built-ins.
+fn writeCFloat(w: *std.Io.Writer, v: f32) !void {
+    if (std.math.isNan(v)) return w.writeAll("__builtin_nanf(\"\")");
+    if (std.math.isInf(v)) return w.writeAll(if (v > 0) "__builtin_inff()" else "-__builtin_inff()");
+    if (v != 0 and (@abs(v) >= 1e15 or @abs(v) < 1e-6)) return w.print("{e}", .{v});
+    return w.print("{d}", .{v});
+}
+
 fn render(k: Kernel, w: *std.Io.Writer) !void {
     ???; // write this function's body
 }
@@ -167,4 +178,13 @@ test "render relu(a * b + c)" {
         \\}
         \\
     , w.buffered());
+}
+
+test "constants C can read" {
+    var buf: [256]u8 = undefined;
+    for ([_]f32{ 0, 2, -0.5, 1e30, 1e-30, std.math.inf(f32), -std.math.inf(f32), std.math.nan(f32) }, [_][]const u8{ "0", "2", "-0.5", "1e30", "1e-30", "__builtin_inff()", "-__builtin_inff()", "__builtin_nanf(\"\")" }) |v, want| {
+        var w: std.Io.Writer = .fixed(&buf);
+        try writeCFloat(&w, v);
+        try std.testing.expectEqualStrings(want, w.buffered());
+    }
 }

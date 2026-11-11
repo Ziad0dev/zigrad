@@ -33,6 +33,17 @@ const std = @import("std");
 
 //@include linearize
 
+/// A constant as C reads it. Plain decimals for ordinary numbers. Very
+/// big or very small ones in scientific notation (1e30 written out is
+/// an integer too big for C). And C has no spelling for infinity or NaN
+/// without math.h, so they use the compiler's built-ins.
+fn writeCFloat(w: *std.Io.Writer, v: f32) !void {
+    if (std.math.isNan(v)) return w.writeAll("__builtin_nanf(\"\")");
+    if (std.math.isInf(v)) return w.writeAll(if (v > 0) "__builtin_inff()" else "-__builtin_inff()");
+    if (v != 0 and (@abs(v) >= 1e15 or @abs(v) < 1e-6)) return w.print("{e}", .{v});
+    return w.print("{d}", .{v});
+}
+
 fn render(k: Kernel, w: *std.Io.Writer) !void {
     try w.writeAll("void kernel(float* out");
     for (0..k.inputs.len) |i| try w.print(", const float* in{d}", .{i});
@@ -41,7 +52,7 @@ fn render(k: Kernel, w: *std.Io.Writer) !void {
         try w.print("    float v{d} = ", .{id});
         switch (inst.op) {
             .buffer => try w.print("in{d}[i]", .{inst.arg}),
-            .constant => try w.print("{d}", .{inst.value}),
+            .constant => try writeCFloat(w, inst.value),
             .add => try w.print("v{d} + v{d}", .{ inst.a, inst.b }),
             .mul => try w.print("v{d} * v{d}", .{ inst.a, inst.b }),
             .max => try w.print("v{d} > v{d} ? v{d} : v{d}", .{ inst.a, inst.b, inst.a, inst.b }),

@@ -74,13 +74,15 @@ test "bf16 rounds to nearest" {
 }
 
 test "int8 quantization" {
-    const x = [_]f32{ 0.5, -1.27, 0.01, 1.0, -0.333 };
-    var q: [5]i8 = undefined;
+    const x = [_]f32{ 0.5, -1.27, 0.01, 1.0, -0.333, 0.336, -0.006 };
+    var q: [7]i8 = undefined;
     const scale = quantize(&x, &q);
     try std.testing.expectApproxEqAbs(0.01, scale, 1e-7);
     try std.testing.expectEqual(-127, q[1]); // the biggest maps to ±127
+    try std.testing.expectEqual(34, q[5]); // 33.6 rounds to the NEAREST whole number
+    try std.testing.expectEqual(-1, q[6]); // and so does -0.6
 
-    var back: [5]f32 = undefined;
+    var back: [7]f32 = undefined;
     dequantize(&q, scale, &back);
     for (x, back) |orig, got| try std.testing.expect(@abs(orig - got) <= scale / 2 + 1e-6);
 }
