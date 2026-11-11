@@ -31,8 +31,12 @@ const Tensor = struct {
     data: []const f32,
 };
 
-/// Find tensor `name` in a safetensors file. Returned slices point into
-/// `file` and `alloc`.
+/// Find tensor `name` in a safetensors file. The shape and the numbers
+/// are copied out into `alloc`, along with the parsed header, and none
+/// of it is freed separately: pass an arena. (Why copy the numbers? The
+/// data starts right after the header, wherever that ends, so a float
+/// may sit at an address that isn't a multiple of 4, and Zig won't view
+/// unaligned bytes as an []f32. Real files pad the header to fix that.)
 fn load(alloc: std.mem.Allocator, file: []const u8, name: []const u8) !Tensor {
     const header_len: usize = @intCast(???);
     const header = file[8..][0..header_len];

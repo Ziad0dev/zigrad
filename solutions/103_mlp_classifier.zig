@@ -287,6 +287,7 @@ const Mlp = struct {
     }
 };
 
+/// The fraction of examples whose highest logit is the right class.
 fn accuracy(m: Mlp, xs: []const f64, ys: []const usize) f64 {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -299,6 +300,11 @@ fn accuracy(m: Mlp, xs: []const f64, ys: []const usize) f64 {
     return @as(f64, @floatFromInt(right)) / @as(f64, @floatFromInt(ys.len));
 }
 
+/// Minibatch SGD: each epoch, shuffle, then for each batch: zero every
+/// parameter's grad (068's backward ADDS into them, so they would pile
+/// up across steps), compute the cross-entropy (already a mean over the
+/// batch), backward, and step every weight by -lr * grad. A fresh arena
+/// for each batch's graph keeps memory flat.
 fn train(m: Mlp, rand: std.Random, xs: []const f64, ys: []const usize, epochs: usize, batch: usize, lr: f64) void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();

@@ -38,7 +38,10 @@ fn softmaxRow(logits: []const f64, out: []f64) void {
 const Model = struct {
     w: [vocab][vocab]f64 = @splat(@splat(0)),
 
-    /// One step of gradient descent on the whole corpus. Returns the loss.
+    /// One step of gradient descent on the whole corpus: every character
+    /// is predicted from the one before it, and the first from '.' (the
+    /// start). Returns the loss before the step, as the MEAN negative log
+    /// likelihood per character, which is what countedLoss computes too.
     fn step(m: *Model, text: []const u8, lr: f64) f64 {
         var grad: [vocab][vocab]f64 = @splat(@splat(0));
         var p: [vocab]f64 = undefined;

@@ -29,7 +29,7 @@ const std = @import("std");
 const Command = struct {
     name: []const u8,
     /// Don't start until `after_queue`'s signal reaches `after_value`.
-    after_queue: ?*const Queue = null,
+    after_queue: ?*Queue = null,
     after_value: u64 = 0,
     value: u64 = 0, // the signal value this command will set
 };
@@ -64,10 +64,17 @@ const Queue = struct {
     }
 
     /// CPU side: block until the signal reaches `value`. Here, that means
-    /// letting the GPU work.
+    /// letting the GPU work: this queue's engine, and, when its next
+    /// command is waiting for another queue, that queue's engine too
+    /// (on a real GPU they all run on their own).
     fn wait(q: *Queue, value: u64) void {
         while (q.signal < value) {
-            if (!q.tick()) @panic("deadlock: waiting on work that can't run");
+            if (q.tick()) continue;
+            const blocker = if (q.next < q.submitted) q.commands[q.next].after_queue else null;
+            if (blocker) |other| {
+                if (other.tick()) continue;
+            }
+            @panic("deadlock: waiting on work that can't run");
         }
     }
 };
@@ -94,5 +101,15 @@ test "compute waits for the copy" {
     try std.testing.expect(!compute.tick()); // blocked: the data isn't there yet
     try std.testing.expect(copy.tick());
     try std.testing.expect(compute.tick()); // now it can go
+    try std.testing.expectEqual(1, compute.signal);
+}
+
+test "waiting on a queue that waits on another" {
+    var copy: Queue = .{};
+    var compute: Queue = .{};
+    const copied = copy.submit(.{ .name = "copy weights to GPU" });
+    const done = compute.submit(.{ .name = "kernel", .after_queue = &copy, .after_value = copied });
+    compute.wait(done); // the copy engine works meanwhile
+    try std.testing.expectEqual(1, copy.signal);
     try std.testing.expectEqual(1, compute.signal);
 }

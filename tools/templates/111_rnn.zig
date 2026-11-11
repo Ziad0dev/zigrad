@@ -61,6 +61,11 @@ test "one step by hand" {
     const h = r.step(.{ 0.2, 0.4 }, .{0.3});
     try std.testing.expectApproxEqAbs(std.math.tanh(@as(f64, 0.1 + 0.3)), h[0], 1e-12);
     try std.testing.expectApproxEqAbs(std.math.tanh(@as(f64, 0.2 - 0.3 + 0.1)), h[1], 1e-12);
+    // a W that isn't symmetric: row i of W says what h_i is made of
+    const s: Rnn = .{ .w = .{ .{ 0.5, 0.2 }, .{ -0.3, 0.5 } }, .u = .{ .{1}, .{-1} }, .b = .{ 0, 0.1 } };
+    const g = s.step(.{ 0.2, 0.4 }, .{0.3});
+    try std.testing.expectApproxEqAbs(std.math.tanh(@as(f64, 0.1 + 0.08 + 0.3)), g[0], 1e-12);
+    try std.testing.expectApproxEqAbs(std.math.tanh(@as(f64, -0.06 + 0.2 - 0.3 + 0.1)), g[1], 1e-12);
 }
 
 test "a counter: the hidden state remembers how many 1s it has seen" {
