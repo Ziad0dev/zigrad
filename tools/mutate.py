@@ -174,7 +174,7 @@ def run(job):
     if c.returncode != 0:
         return "stillborn"
     try:
-        r = subprocess.run([str(exe)], cwd=work, capture_output=True, text=True, timeout=120)
+        r = subprocess.run([str(exe)], cwd=work, capture_output=True, text=True, errors="replace", timeout=120)
         out = r.stderr + r.stdout
         if r.returncode == 0 and re.search(r"\b\d+ passed; [1-9]\d* skipped", out):
             # It passed, but the tests that might have killed it didn't run

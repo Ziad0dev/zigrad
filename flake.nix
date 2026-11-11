@@ -34,6 +34,7 @@
                 pkgs.zig_0_16 # the course targets Zig 0.16.0
                 pkgs.python3 # tools/gen.py, and tinygrad itself (TINYGRAD.md)
                 llvm.clang-unwrapped # tinygrad's CPU backend compiles its kernels with clang
+                pkgs.iverilog # Part VII simulates its Verilog with Icarus Verilog (211 on)
               ];
               shellHook = ''
                 # The NVIDIA driver's libcuda comes from the host, not from nixpkgs:

@@ -80,3 +80,64 @@ c6_checkpoint_part_six | const relu_kernel = \\KERNEL void relu(float *out, cons
 c6_checkpoint_part_six | const block_max_kernel = \\KERNEL void block_max(float *out, const float *x) { \\ static SHARED float sh[257]; \\ int tid = threadIdx_x; \\ sh[tid] = x[blockIdx_x * 256 + tid]; \\ __syncthreads(); \\ for (int s = 128; s > 0; s >>= 1) { \\ if (tid < s && sh[tid + s] > sh[tid]) sh[tid] = sh[tid + s]; \\ __syncthreads(); \\ } \\ if (tid == 0) out[blockIdx_x] = sh[0]; \\} \\ ;
 c6_checkpoint_part_six | const block_max_kernel = \\KERNEL void block_max(float *out, const float *x) { \\ static SHARED float sh[256]; \\ int tid = threadIdx_x; \\ sh[tid] = x[blockIdx_x * 256 + tid]; \\ __syncthreads(); \\ for (int s = 128; s > 0; s >>= 1) { \\ if (tid < s && sh[tid + s] >= sh[tid]) sh[tid] = sh[tid + s]; \\ __syncthreads(); \\ } \\ if (tid == 0) out[blockIdx_x] = sh[0]; \\} \\ ;
 c1_checkpoint_part_one | const n = @max(a.len, b.len); for (0..n) |k| { // k counts dimensions from the right const x = if (k < a.len) a[a.len - 1 - k] else 1; const y = if (k < b.len) b[b.len - 1 - k] else 1; if (x != y and x != 1 and y != 1) return null; out[n - 1 - k] = @max(y, x); } return out[0..n];
+#
+# Part VII. NAND, AND, OR and XOR are symmetric in their inputs:
+209_transistors | not(nand(b, a))
+209_transistors | nand(nand(m, a), nand(b, m))
+209_transistors | nand(nand(a, m), nand(m, b))
+209_transistors | xor(carry_in, ab)
+209_transistors | orGate(andGate(b, a), andGate(ab, carry_in))
+209_transistors | orGate(andGate(a, b), andGate(carry_in, ab))
+#
+# Verilog cuts a value to the width of what it is assigned to, and a shift
+# by 32 or more already gives 0:
+219_datapath | const adder_flags = \\ y = sum[32:0]; \\ c = sum[32]; \\ v = (x[31] ^ y[31]) & (w[31] ^ y[31]); ;
+219_datapath | const right_shifts = \\ LSR: begin \\ out = (n <= 32) ? value >> n : 0; \\ c_out = (n <= 32) ? value[n - 1] : 0; \\ end \\ ASR: begin \\ if (n < 32) begin \\ out = $signed(value) >>> n; \\ c_out = value[n - 1]; \\ end else begin \\ out = {32{value[31]}}; \\ c_out = value[31]; \\ end \\ end ;
+219_datapath | const right_shifts = \\ LSR: begin \\ out = (n < 33) ? value >> n : 0; \\ c_out = (n <= 32) ? value[n - 1] : 0; \\ end \\ ASR: begin \\ if (n < 32) begin \\ out = $signed(value) >>> n; \\ c_out = value[n - 1]; \\ end else begin \\ out = {32{value[31]}}; \\ c_out = value[31]; \\ end \\ end ;
+#
+# The distance is shifted right by 2 afterwards, and addresses are multiples
+# of 4, so one byte less rounds to the same word count:
+229_linker | target -% (site +% 7)
+#
+# max is symmetric:
+231_ethernet | @max(min_payload, payload.len)
+#
+# Verilog cuts the 33 bits to paddr's 32:
+234_mmu | const tlb_match = \\ if (entries[i][41] && entries[i][39:20] == vaddr[31:12]) begin \\ hit = 1; \\ paddr = {entries[i][20:0], vaddr[11:0]}; \\ writable = entries[i][40]; \\ end ;
+#
+# Verilog cuts the 9 bits to shift's 8:
+238_sd_card | const spi_falling = \\ shift <= {shift[7:0], 1'b0}; \\ bits_left <= bits_left - 1; ;
+#
+# The emulator's bus writes a whole word for every size but 1:
+244_dynamic_linking | const address = library.image.symbols.get(program.imports[n]) orelse return error.SymbolNotInLibrary; try board.write(program.slot(n), 5, address); cpu.r[PC] = address;
+244_dynamic_linking | const address = library.image.symbols.get(program.imports[n]) orelse return error.SymbolNotInLibrary; try board.write(program.slot(n), 3, address); cpu.r[PC] = address;
+#
+# n is never negative there, so bit 31 adds nothing; and nobody reads what print_int returns:
+230_libc | const libc_udiv = \\int udiv(int n, int d) { \\ int q = 0; \\ int r = 0; \\ for (int i = 31; i >= 0; i--) { \\ r = (r << 1) | ((n >> i) & 1); \\ if (r >= d) { \\ r -= d; \\ q = q | (1 << i); \\ } \\ } \\ return q; \\} \\ ;
+230_libc | const libc_print_int = \\int print_int(int n) { \\ if (n < 0) { \\ putchar('-'); \\ n = -n; \\ } \\ if (n >= 10) print_int(n / 10); \\ putchar('0' + n % 10); \\} \\ ;
+230_libc | const libc_print_int = \\int print_int(int n) { \\ if (n < 0) { \\ putchar('-'); \\ n = -n; \\ } \\ if (n >= 10) print_int(n / 10); \\ putchar('0' + n % 10); \\ return 1; \\} \\ ;
+#
+# The shifts are 0, 8, 16 and 24 either way:
+232_bootloader | const boot_get_word = \\int get_word() { \\ int w = 0; \\ for (int shift = 0; shift < 31; shift += 8) w = w | (getchar() << shift); \\ return w; \\} \\ ;
+#
+# A fifth step looks at the first candidate again; and nobody reads what trap() returns:
+236_processes | const procs_choose = \\ for (int step = 1; step <= 5; step++) { \\ int p = (running + step) % 4; \\ if (alive[p]) { \\ running = p; \\ current = frames + p * 17; \\ sys[7] = slice; \\ return p; \\ } \\ } \\ ;
+236_processes | const procs_timer_and_exit = \\ if (cause == 2) { \\ schedule(); \\ return 1; \\ } \\ if (cause == 1 && current[0] == 2) { \\ alive[running] = 0; \\ schedule(); \\ return 0; \\ } \\ ;
+#
+# Nobody reads what flush_tlb returns; the TLB takes its index modulo 8, so a ninth
+# round does entry 0 twice; and any result but 0 means "repaired":
+237_address_spaces | const vm_flush = \\int flush_tlb() { \\ for (int i = 0; i < 8; i++) { \\ sys[16] = i; \\ sys[17] = 0; \\ } \\} \\ ;
+237_address_spaces | const vm_flush = \\int flush_tlb() { \\ for (int i = 0; i < 9; i++) { \\ sys[16] = i; \\ sys[17] = 0; \\ } \\ return 0; \\} \\ ;
+237_address_spaces | const vm_flush = \\int flush_tlb() { \\ for (int i = 0; i < 8; i++) { \\ sys[16] = i; \\ sys[17] = 0; \\ } \\ return 1; \\} \\ ;
+237_address_spaces | const vm_flush = \\int flush_tlb() { \\ for (int i = 0; i <= 8; i++) { \\ sys[16] = i; \\ sys[17] = 0; \\ } \\ return 0; \\} \\ ;
+237_address_spaces | const vm_page_fault = \\int page_fault(int addr) { \\ int slot = slot_of(addr); \\ if (slot < 0) return 0; \\ int *entry = tables + running * 17 + slot; \\ if (*entry == 0) { \\ *entry = new_page(); \\ if (slot < image_pages[running]) \\ memcpy((char *)*entry, (char *)(image_base[running] + slot * 4096), 4096); \\ } \\ sys[16] = next_tlb; \\ next_tlb = (next_tlb + 1) & 7; \\ sys[18] = *entry; \\ sys[17] = (addr & -4096) | 3; \\ return 2; \\} \\ ;
+#
+# Every caller only asks whether find's result is negative, and nobody reads what cat
+# and rm return. Looking at a ninth file reads past the arrays, into file 0's data,
+# which ends in a newline and so can't equal a name:
+240_shell | const shell_find = \\int find(char *name) { \\ for (int i = 0; i < 8; i++) { \\ if (used[i] && strcmp(names + i * 16, name) == 0) return i; \\ } \\ return -2; \\} \\ ;
+240_shell | const shell_find = \\int find(char *name) { \\ for (int i = 0; i <= 8; i++) { \\ if (used[i] && strcmp(names + i * 16, name) == 0) return i; \\ } \\ return -1; \\} \\ ;
+240_shell | const shell_find = \\int find(char *name) { \\ for (int i = 0; i < 9; i++) { \\ if (used[i] && strcmp(names + i * 16, name) == 0) return i; \\ } \\ return -1; \\} \\ ;
+240_shell | const shell_cat_rm = \\int cat(char *name) { \\ int i = find(name); \\ if (i < 0) return puts("cat: no such file\n"); \\ for (int k = 0; k < sizes[i]; k++) putchar(data[i * 256 + k]); \\ return 0; \\} \\int rm(char *name) { \\ int i = find(name); \\ if (i < 0) return puts("rm: no such file\n"); \\ used[i] = 0; \\ return 1; \\} \\ ;
+240_shell | const shell_cat_rm = \\int cat(char *name) { \\ int i = find(name); \\ if (i < 0) return puts("cat: no such file\n"); \\ for (int k = 0; k < sizes[i]; k++) putchar(data[i * 256 + k]); \\} \\int rm(char *name) { \\ int i = find(name); \\ if (i < 0) return puts("rm: no such file\n"); \\ used[i] = 0; \\ return 0; \\} \\ ;
+240_shell | const shell_cat_rm = \\int cat(char *name) { \\ int i = find(name); \\ if (i < 0) return puts("cat: no such file\n"); \\ for (int k = 0; k < sizes[i]; k++) putchar(data[i * 256 + k]); \\ return 1; \\} \\int rm(char *name) { \\ int i = find(name); \\ if (i < 0) return puts("rm: no such file\n"); \\ used[i] = 0; \\ return 0; \\} \\ ;
