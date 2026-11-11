@@ -389,7 +389,18 @@ fn simulate(gpa: std.mem.Allocator, source: []const u8) ![]u8 {
         return error.VerilogError;
     }
     // 2. ...and run it. -n: stop at $finish instead of asking what to do.
-    const ran = try std.process.run(alloc, io, .{ .argv = &.{ "vvp", "-n", vvp_path }, .cwd = .{ .path = dir } });
+    // A design can run forever (a bench that never reaches $finish, a
+    // loop of gates that never settles), so give it a minute; run() stops
+    // the simulator when the time is up.
+    const minute: std.Io.Timeout = .{ .duration = .{ .raw = .fromSeconds(60), .clock = .awake } };
+    const ran = std.process.run(alloc, io, .{
+        .argv = &.{ "vvp", "-n", vvp_path },
+        .cwd = .{ .path = dir },
+        .timeout = minute.toDeadline(io),
+    }) catch |err| {
+        if (err == error.Timeout) std.debug.print("the simulation was still running after a minute: does it reach $finish?\n", .{});
+        return err;
+    };
     if (ran.term != .exited or ran.term.exited != 0) {
         std.debug.print("vvp failed:\n{s}\n{s}\n", .{ ran.stdout, ran.stderr });
         return error.SimulationFailed;

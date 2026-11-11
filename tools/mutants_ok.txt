@@ -112,10 +112,8 @@ c1_checkpoint_part_one | const n = @max(a.len, b.len); for (0..n) |k| { // k cou
 244_dynamic_linking | const address = library.image.symbols.get(program.imports[n]) orelse return error.SymbolNotInLibrary; try board.write(program.slot(n), 5, address); cpu.r[PC] = address;
 244_dynamic_linking | const address = library.image.symbols.get(program.imports[n]) orelse return error.SymbolNotInLibrary; try board.write(program.slot(n), 3, address); cpu.r[PC] = address;
 #
-# n is never negative there, so bit 31 adds nothing; and nobody reads what print_int returns:
+# udiv is only called with n >= 0 (__divsi3 sees to that), so bit 31 adds nothing:
 230_libc | const libc_udiv = \\int udiv(int n, int d) { \\ int q = 0; \\ int r = 0; \\ for (int i = 31; i >= 0; i--) { \\ r = (r << 1) | ((n >> i) & 1); \\ if (r >= d) { \\ r -= d; \\ q = q | (1 << i); \\ } \\ } \\ return q; \\} \\ ;
-230_libc | const libc_print_int = \\int print_int(int n) { \\ if (n < 0) { \\ putchar('-'); \\ n = -n; \\ } \\ if (n >= 10) print_int(n / 10); \\ putchar('0' + n % 10); \\} \\ ;
-230_libc | const libc_print_int = \\int print_int(int n) { \\ if (n < 0) { \\ putchar('-'); \\ n = -n; \\ } \\ if (n >= 10) print_int(n / 10); \\ putchar('0' + n % 10); \\ return 1; \\} \\ ;
 #
 # The shifts are 0, 8, 16 and 24 either way:
 232_bootloader | const boot_get_word = \\int get_word() { \\ int w = 0; \\ for (int shift = 0; shift < 31; shift += 8) w = w | (getchar() << shift); \\ return w; \\} \\ ;
@@ -130,7 +128,10 @@ c1_checkpoint_part_one | const n = @max(a.len, b.len); for (0..n) |k| { // k cou
 237_address_spaces | const vm_flush = \\int flush_tlb() { \\ for (int i = 0; i < 9; i++) { \\ sys[16] = i; \\ sys[17] = 0; \\ } \\ return 0; \\} \\ ;
 237_address_spaces | const vm_flush = \\int flush_tlb() { \\ for (int i = 0; i < 8; i++) { \\ sys[16] = i; \\ sys[17] = 0; \\ } \\ return 1; \\} \\ ;
 237_address_spaces | const vm_flush = \\int flush_tlb() { \\ for (int i = 0; i <= 8; i++) { \\ sys[16] = i; \\ sys[17] = 0; \\ } \\ return 0; \\} \\ ;
-237_address_spaces | const vm_page_fault = \\int page_fault(int addr) { \\ int slot = slot_of(addr); \\ if (slot < 0) return 0; \\ int *entry = tables + running * 17 + slot; \\ if (*entry == 0) { \\ *entry = new_page(); \\ if (slot < image_pages[running]) \\ memcpy((char *)*entry, (char *)(image_base[running] + slot * 4096), 4096); \\ } \\ sys[16] = next_tlb; \\ next_tlb = (next_tlb + 1) & 7; \\ sys[18] = *entry; \\ sys[17] = (addr & -4096) | 3; \\ return 2; \\} \\ ;
+237_address_spaces | const vm_page_fault = \\int page_fault(int addr) { \\ int slot = slot_of(addr); \\ if (slot < 0) return 0; \\ int *entry = tables + running * 17 + slot; \\ if (*entry == 0) { \\ *entry = new_page(); \\ if (*entry == 0) return 0; \\ if (slot < image_pages[running]) \\ memcpy((char *)*entry, (char *)(image_base[running] + slot * 4096), 4096); \\ } \\ sys[16] = next_tlb; \\ next_tlb = (next_tlb + 1) & 7; \\ sys[18] = *entry; \\ sys[17] = (addr & -4096) | 3; \\ return 2; \\} \\ ;
+#
+# -4095 keeps bit 0 where -4096 clears it, and the | 3 sets bit 0 anyway:
+237_address_spaces | const vm_page_fault = \\int page_fault(int addr) { \\ int slot = slot_of(addr); \\ if (slot < 0) return 0; \\ int *entry = tables + running * 17 + slot; \\ if (*entry == 0) { \\ *entry = new_page(); \\ if (*entry == 0) return 0; \\ if (slot < image_pages[running]) \\ memcpy((char *)*entry, (char *)(image_base[running] + slot * 4096), 4096); \\ } \\ sys[16] = next_tlb; \\ next_tlb = (next_tlb + 1) & 7; \\ sys[18] = *entry; \\ sys[17] = (addr & -4095) | 3; \\ return 1; \\} \\ ;
 #
 # Every caller only asks whether find's result is negative, and nobody reads what cat
 # and rm return. Looking at a ninth file reads past the arrays, into file 0's data,

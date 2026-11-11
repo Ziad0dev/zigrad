@@ -28,7 +28,9 @@
 //
 //   1. The address is outside the table: kill the process.
 //   2. The slot is 0, a page touched for the first time: find a free
-//      physical page now. If the page belongs to the program's image,
+//      physical page now. (If there is none left, the machine is out of
+//      memory, and the process that asked dies of it, as in case 1.)
+//      If the page belongs to the program's image,
 //      copy that part of the image into it (*demand loading*: a program
 //      that never runs its error handling never loads it). Otherwise it
 //      is fresh memory, stack or data.
@@ -40,6 +42,11 @@
 // And one new duty on every context switch: *flush the TLB*. Its
 // entries are the old process's. Leave them, and the new process would
 // read the old one's memory through them.
+//
+// When a process ends, its pages go back to the kernel, which keeps the
+// free ones the way 230's malloc keeps free blocks: as a list, chained
+// through the first word of each. The next process to need a page gets
+// one of those (wiped: never hand out someone's old data).
 //
 // The tests boot the kernel with several separately linked programs in
 // memory (as a bootloader would leave them), including the same program
@@ -63,7 +70,8 @@ const vm_new_frame = ???;
 /// page_fault(addr): repair a fault at virtual address `addr` for the
 /// running process, and return 1; or return 0 if the address isn't the
 /// process's to use. Given: slot_of(addr), the table slot (or -1);
-/// `entry`, a pointer to that slot; new_page(), a zeroed physical page;
+/// `entry`, a pointer to that slot; new_page(), a zeroed physical page,
+/// or 0 if memory has run out (then return 0, and leave the slot empty);
 /// and for the image: image_base[running] (where the program's bytes
 /// are, physically), image_pages[running] (how many pages of them), and
 /// memcpy(to, from, n) with char * arguments.
@@ -85,15 +93,37 @@ const vm_c =
     \\int tables[68];                 /* a page table of 17 slots for each process */
     \\int image_base[4];
     \\int image_pages[4];
-    \\int next_free = 0x50000;        /* physical memory from here up is unused */
+    \\int next_free = 0x50000;        /* physical memory from here up has never been used... */
+    \\int memory_end = 0x80000;       /* ...as far as here, where it ends */
+    \\int free_pages;                 /* pages that came back, each holding the next one's address */
     \\int next_tlb;
     \\int faults;                     /* page faults repaired, for the curious */
     \\
     \\int new_page() {
-    \\    int page = next_free;
-    \\    next_free += 4096;
+    \\    int page = free_pages;
+    \\    if (page) {
+    \\        free_pages = *(int *)page;
+    \\    } else {
+    \\        if (next_free >= memory_end) return 0;
+    \\        page = next_free;
+    \\        next_free += 4096;
+    \\    }
     \\    memset((char *)page, 0, 4096);    /* never hand out someone's old data */
     \\    return page;
+    \\}
+    \\
+    \\/* The end of a process: its pages go back on the list. */
+    \\int reap(int p) {
+    \\    for (int i = 0; i < 17; i++) {
+    \\        int *entry = tables + p * 17 + i;
+    \\        if (*entry) {
+    \\            *(int *)*entry = free_pages;
+    \\            free_pages = *entry;
+    \\            *entry = 0;
+    \\        }
+    \\    }
+    \\    alive[p] = 0;
+    \\    return 0;
     \\}
     \\
     \\/* Which slot of a page table an address belongs to. -1: none. */
@@ -145,17 +175,18 @@ const vm_c =
     \\        puts("[segfault ");
     \\        putchar('0' + running);
     \\        puts("]");
-    \\        alive[running] = 0;
+    \\        reap(running);
     \\        schedule();
     \\        return 0;
     \\    }
     \\    int number = current[0];
     \\    if (number == 1) current[0] = putchar(current[1]);
-    \\    else if (number == 2) { alive[running] = 0; schedule(); }
+    \\    else if (number == 2) { reap(running); schedule(); }
     \\    else if (number == 4) { current[0] = 0; schedule(); }
     \\    else if (number == 5) current[0] = running;
     \\    else if (number == 6) current[0] = spawn(current[1]);
     \\    else if (number == 7) current[0] = faults;
+    \\    else if (number == 8) current[0] = alive[current[1] & 3];
     \\    else current[0] = -1;
     \\    return 0;
     \\}
@@ -327,6 +358,54 @@ test "what a process can't reach kills it, and only it" {
     });
     defer ta.free(out.output);
     try expectEqualStrings("reading the kernel: [segfault 1] writing to the UART: [segfault 1] one page too far: [segfault 1] a null pointer: [segfault 1] init is fine", out.output);
+}
+
+const hog_c =
+    \\int main() {
+    \\    char *base = (char *)0x40000000;
+    \\    for (int page = 1; page < 16; page++) base[page * 4096] = 'a' + syscall(5);
+    \\    syscall(4);                                  /* let the others have a go */
+    \\    for (int page = 1; page < 16; page++) if (base[page * 4096] != 'a' + syscall(5)) return 1;
+    \\    putchar('a' + syscall(5));
+    \\    return 0;
+    \\}
+;
+
+test "a dead process's pages are used again" {
+    // Memory has 48 pages to give out, and a hog takes all 17 of its
+    // table. Ten of them, one after another, only fit if each one's
+    // pages come back when it ends.
+    const out = try bootWith(&.{
+        \\int main() {
+        \\    for (int n = 0; n < 10; n++) {
+        \\        int child = syscall(6, 1);
+        \\        while (syscall(8, child)) syscall(4);     /* wait for it to end */
+        \\    }
+        \\    puts(" done");
+        \\    return 0;
+        \\}
+        ,
+        hog_c,
+    });
+    defer ta.free(out.output);
+    try expectEqualStrings("bbbbbbbbbb done", out.output);
+}
+
+test "out of memory: the one that asked dies, the rest go on" {
+    // Three hogs at once want 51 pages, and init holds some too. The
+    // third runs out part of the way, and what it had goes to the fourth.
+    const out = try bootWith(&.{
+        \\int main() {
+        \\    syscall(6, 1); syscall(6, 1); syscall(6, 1);
+        \\    while (syscall(8, 1) || syscall(8, 2)) syscall(4);
+        \\    syscall(6, 1);
+        \\    return 0;
+        \\}
+        ,
+        hog_c,
+    });
+    defer ta.free(out.output);
+    try expectEqualStrings("[segfault 3]bcb", out.output);
 }
 
 test "preempted, switched, flushed, and still right" {
@@ -2255,22 +2334,32 @@ const libc_division =
     \\
 ++ libc_udiv ++
     \\/* C rounds towards zero: -7 / 2 is -3, and the remainder has the
-    \\   sign of the left side: -7 % 2 is -1. */
+    \\   sign of the left side: -7 % 2 is -1. (Dividing by 0 gives a
+    \\   meaningless number, not an error: C allows that.)
+    \\
+    \\   One int has no positive twin: -2147483648, whose negation is
+    \\   itself. As a divisor it goes into nothing but itself. As the
+    \\   left side, one b is taken off it before negating, and counted
+    \\   afterwards. */
     \\int __divsi3(int a, int b) {
     \\    int negative = 0;
-    \\    if (a < 0) { a = -a; negative = !negative; }
-    \\    if (b < 0) { b = -b; negative = !negative; }
-    \\    int q = udiv(a, b);
+    \\    int taken = 0;
+    \\    if (b < 0) {
+    \\        if (b == -b) return a == b;
+    \\        b = -b;
+    \\        negative = !negative;
+    \\    }
+    \\    if (a < 0) {
+    \\        if (a == -a) { a += b; taken = 1; }
+    \\        a = -a;
+    \\        negative = !negative;
+    \\    }
+    \\    int q = udiv(a, b) + taken;
     \\    if (negative) return -q;
     \\    return q;
     \\}
     \\int __modsi3(int a, int b) {
-    \\    int negative = a < 0;
-    \\    if (a < 0) a = -a;
-    \\    if (b < 0) b = -b;
-    \\    int r = a - udiv(a, b) * b;     /* what the division left over */
-    \\    if (negative) return -r;
-    \\    return r;
+    \\    return a - __divsi3(a, b) * b;      /* what the division left over */
     \\}
     \\
 ;
@@ -2316,11 +2405,19 @@ const libc_strings =
 /// it is negative. The digit that n % 10 gives is the LAST one: so first
 /// print everything before it (that is n / 10, if there is anything),
 /// and then this digit. '0' + 7 is the character '7'.
+///
+/// For a negative n, don't start with n = -n: the most negative int,
+/// -2147483648, has no positive twin, and -n is n again. Take its last
+/// digit off while it is still negative instead: -257 % 10 is -7, so
+/// the digit is '0' - n % 10, and what comes before it is -(n / 10),
+/// which is positive and always fits.
 const libc_print_int =
     \\int print_int(int n) {
     \\    if (n < 0) {
     \\        putchar('-');
-    \\        n = -n;
+    \\        if (n <= -10) print_int(-(n / 10));
+    \\        putchar('0' - n % 10);
+    \\        return 0;
     \\    }
     \\    if (n >= 10) print_int(n / 10);
     \\    putchar('0' + n % 10);
@@ -2393,6 +2490,7 @@ const libc_memory =
     \\    return (char *)(fresh + 1);
     \\}
     \\int free(char *p) {
+    \\    if (p == 0) return 0;             /* what a failed malloc returned: nothing to give back */
     \\    int *block = (int *)p - 1;        /* back to the size word */
     \\    block[1] = (int)free_list;        /* chain it in at the front */
     \\    free_list = block;
@@ -3017,9 +3115,16 @@ fn alignUp(addr: u32, to: u32) u32 {
     return (addr + to - 1) & ~(to - 1);
 }
 
-/// How many comma-separated things follow.
+/// How many comma-separated things follow. (The comma in ',' is a
+/// character, not a separator.)
 fn countItems(sc: *Scanner) u32 {
-    return @intCast(std.mem.count(u8, sc.text[sc.at..], ",") + 1);
+    const rest = sc.text[sc.at..];
+    var count: u32 = 1;
+    for (rest, 0..) |c, i| {
+        const quoted = i > 0 and i + 1 < rest.len and rest[i - 1] == '\'' and rest[i + 1] == '\'';
+        if (c == ',' and !quoted) count += 1;
+    }
+    return count;
 }
 
 /// The bytes of a quoted string, with \n, \t, \r, \0, \\ and \" decoded.

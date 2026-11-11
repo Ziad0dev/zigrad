@@ -254,14 +254,14 @@ const exercises = [_]Exercise{
     .{ .file = "227_c_codegen.zig", .hint = "A local is at fp minus its offset: sub r0, fp, #n. The address of *p is the value of p. A store is str r0, [r1]. The left value is in r1: sub r0, r1, r0 and cmp r1, r0. An if branches to `otherwise` when the condition is 0, and jumps to `end` after the then-part. A loop ends with a branch to `top`. Each local's offset is the frame size so far, including itself." },
     .{ .file = "228_c_pointers.zig", .hint = "An array's element is a.elem.*. &x has type pointer-to-(type of x). *p reads a byte when p points at chars. a[i] becomes a deref of the sum (a + i), which is then lowered again. In pointer + n the n is scaled by cStride of the pointer's element; in n + pointer it is the left side that is scaled." },
     .{ .file = "229_linker.zig", .hint = "Each object starts at alignUp(end, 4). A symbol's address is its object's start plus its offset. An abs32 hole gets the target address. A call24 gets target - (site + 8): the distance from where pc will be." },
-    .{ .file = "230_libc.zig", .hint = "udiv: for i from 30 down to 0: r = (r << 1) | ((n >> i) & 1); if r >= d, subtract d and set bit i of q. strcmp: walk while *a is not 0 and equals *b; return *a - *b. print_int: a '-' and n = -n if negative; if n >= 10 print n / 10 first; then putchar('0' + n % 10). First fit: while (*link): take the block if block[0] >= words (unlink it with *link = (int *)block[1]), else link = (int **)(block + 1)." },
+    .{ .file = "230_libc.zig", .hint = "udiv: for i from 30 down to 0: r = (r << 1) | ((n >> i) & 1); if r >= d, subtract d and set bit i of q. strcmp: walk while *a is not 0 and equals *b; return *a - *b. print_int: if n >= 10 print n / 10 first; then putchar('0' + n % 10). For a negative n: a '-', then if n <= -10 print -(n / 10), then putchar('0' - n % 10), and return. First fit: while (*link): take the block if block[0] >= words (unlink it with *link = (int *)block[1]), else link = (int **)(block + 1)." },
     .{ .file = "231_ethernet.zig", .hint = "The CRC step: does the register's low bit differ from the incoming bit? Shift right, and XOR the constant in if it did. In Verilog that is (crc[0] ^ data_bit) ? (crc >> 1) ^ 32'hEDB88320 : (crc >> 1). Pad to @max(len, 46). The check state sends ~crc[0] and shifts." },
     .{ .file = "232_bootloader.zig", .hint = "get_word: for shift = 0, 8, 16, 24: w = w | (getchar() << shift). The CRC's shift must clear the sign bit: (crc >> 1) & 0x7fffffff. The loop: read n, read n bytes to load[i], read the check; break if crc32(load, n) == check, else putchar('N')." },
     .{ .file = "233_traps.zig", .hint = "A trap saves cpu.r[PC] in saved_pc, leaves user mode (user = false) and jumps to the vector. The way back puts saved_pc into pc. A swi from user code is cause .syscall, and a fault records f.addr first." },
     .{ .file = "234_mmu.zig", .hint = "The page number is addr >> 12 (as a u20); the answer is the entry's ppage shifted back up, OR the address's low 12 bits. In Verilog: valid is bit 41, the virtual page bits 39..20, and paddr = {entries[i][19:0], vaddr[11:0]}." },
     .{ .file = "235_syscalls.zig", .hint = "The user's sp is at [r12, #0x10] and goes to [r0, #52]; lr goes straight to [r0, #56]; saved_pc from [r12, #0x08] to [r0, #60]. The first frame: regs[13] = 0x1c000, regs[14] = (int)&user_done, regs[15] = (int)&user_main. The table: current[0] is the number and gets the result; current[1] is the argument." },
     .{ .file = "236_processes.zig", .hint = "A new frame: frame[13] = 0x1c000 - p * 0x1000, frame[14] = (int)&user_done, frame[15] = entry. Round robin: for step = 1 to 4, p = (running + step) % 4; the first alive one becomes running, current = frames + p * 17, sys[7] = slice. A timer trap just calls schedule(); exit clears alive[running] first." },
-    .{ .file = "237_address_spaces.zig", .hint = "Flush: for each i, sys[16] = i and sys[17] = 0. Every program starts at pc 0x40000000 with sp 0x80000000. page_fault: slot < 0 means 0. An empty slot gets new_page(), and a memcpy of 4096 bytes from image_base[running] + slot * 4096 if slot < image_pages[running]. Then sys[16] = next_tlb (and move it on, & 7), sys[18] = *entry, sys[17] = (addr & -4096) | 3." },
+    .{ .file = "237_address_spaces.zig", .hint = "Flush: for each i, sys[16] = i and sys[17] = 0. Every program starts at pc 0x40000000 with sp 0x80000000. page_fault: slot < 0 means 0. An empty slot gets new_page() (return 0 if that gave 0), and a memcpy of 4096 bytes from image_base[running] + slot * 4096 if slot < image_pages[running]. Then sys[16] = next_tlb (and move it on, & 7), sys[18] = *entry, sys[17] = (addr & -4096) | 3." },
     .{ .file = "238_sd_card.zig", .hint = "Rising edge: rx <= {rx[6:0], miso}. Falling edge: shift <= {shift[6:0], 1'b0} and one bit fewer left. CRC-7: XOR 0x09 in when the register's top bit differs from the incoming bit. A command starts with 0x40 | cmd and its argument is big-endian. CMD17 takes block * 512; wait for 0xfe; then 512 exchanges of 0xff." },
     .{ .file = "239_fat.zig", .hint = "The root directory starts after the reserved blocks and all the FAT copies; the data after the root directory. Cluster n starts at data_start + (n - 2) * sectors_per_cluster. FAT entry n is in the table's block n / 256, at byte (n % 256) * 2. A first byte of 0 ends the directory; 0xe5 is a deleted entry. Reading follows fat.after(cluster); deleting sets each entry to 0, having read the link first." },
     .{ .file = "240_shell.zig", .hint = "split: skip spaces, writing 0 over them; stop at the end or at max words; note where the word starts; walk to its end. find: used[i] and strcmp(names + i * 16, name) == 0. cat: sizes[i] bytes from data + i * 256, or the error message. rm: used[i] = 0." },
@@ -407,8 +407,16 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
         };
 
         if (passed) {
-            p("  ✓ {s}\n", .{name});
-            b.cache_root.handle.writeFile(io, .{ .sub_path = memo, .data = &print }) catch {};
+            // Tests skip themselves when what they need is missing (a
+            // GPU, the Verilog simulator). Then nothing checked that part
+            // of the answer: say so, and don't remember it as a pass, so
+            // that it is tried again once the tool is there.
+            if (testsSkipped(result.stderr)) {
+                p("  ✓ {s}  (some tests skipped: `zig test {s}` says which)\n", .{ name, rel });
+            } else {
+                p("  ✓ {s}\n", .{name});
+                b.cache_root.handle.writeFile(io, .{ .sub_path = memo, .data = &print }) catch {};
+            }
             continue;
         }
 
@@ -444,6 +452,14 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
             \\
         , .{exercises.len});
     }
+}
+
+/// Whether `zig test` reported skipped tests: its last line is then
+/// "N passed; M skipped; 0 failed."
+fn testsSkipped(stderr: []const u8) bool {
+    const at = std.mem.indexOf(u8, stderr, " passed; ") orelse return false;
+    const rest = stderr[at + " passed; ".len ..];
+    return std.mem.indexOf(u8, rest[0..@min(rest.len, 16)], " skipped") != null and rest[0] != '0';
 }
 
 fn printSkipped(count: usize, first: []const u8, last: []const u8) void {

@@ -71,6 +71,8 @@ const FatLayout = struct {
     root_start: u32,
     root_entries: u32,
     data_start: u32,
+    /// How many clusters the data region holds. They are numbered from 2.
+    clusters: u32,
 
     fn parse(boot: *const [block_size]u8) !FatLayout {
         if (boot[510] != 0x55 or boot[511] != 0xaa) return error.NotFat;
@@ -83,14 +85,25 @@ const FatLayout = struct {
         // directory (32 bytes per entry), the data.
         const root_start = ???;
         const root_sectors = (root_entries * 32 + block_size - 1) / block_size;
+        const data_start = ???;
+        // The size of the whole volume is a 16-bit count, or, if that is
+        // 0, a 32-bit one further on. What the data region doesn't
+        // divide into whole clusters is left over. And the table can't
+        // describe more clusters than it has entries (256 to a block).
+        const small: u32 = std.mem.readInt(u16, boot[19..21], .little);
+        const total = if (small != 0) small else std.mem.readInt(u32, boot[32..36], .little);
+        const per_cluster: u32 = boot[13];
+        if (per_cluster == 0) return error.NotFat;
+        const clusters = @min((total -| data_start) / per_cluster, fat_sectors * 256 -| 2);
         return .{
-            .sectors_per_cluster = boot[13],
+            .sectors_per_cluster = per_cluster,
             .fat_start = reserved,
             .fat_sectors = fat_sectors,
             .fat_copies = fat_copies,
             .root_start = root_start,
             .root_entries = root_entries,
-            .data_start = ???,
+            .data_start = data_start,
+            .clusters = clusters,
         };
     }
 
@@ -174,6 +187,10 @@ const Fat = struct {
                 const raw = w.block[offset..][0..32];
                 if (raw[0] == ???) return null;
                 if (raw[0] == ???) continue;
+                // not a file: the volume's label, a piece of a long name
+                // (other systems keep those in entries of their own), or
+                // a directory
+                if (raw[11] & 0x18 != 0) continue;
                 var file: FatFile = .{
                     .size = std.mem.readInt(u32, raw[28..32], .little),
                     .first_cluster = std.mem.readInt(u16, raw[26..28], .little),
@@ -216,7 +233,8 @@ const Fat = struct {
         const want = try fat83(text);
         var w: Walker = .{ .fat = fat };
         while (try w.nextFile()) |file| {
-            const have = try fat83(file.name());
+            // a name we could not have written ourselves is not the one
+            const have = fat83(file.name()) catch continue;
             if (std.mem.eql(u8, &want, &have)) return .{ .file = file, .slot = w.slot };
         }
         return error.FileNotFound;
@@ -264,17 +282,31 @@ const Fat = struct {
 
     /// The first free cluster at or after `from`.
     fn findFree(fat: *Fat, from: u16) !u16 {
-        var cluster = from;
-        while (cluster < fat.layout.fat_sectors * 256) : (cluster += 1) {
-            if (try fat.after(cluster) == 0) return cluster;
+        var cluster: u32 = from;
+        while (cluster < fat.layout.clusters + 2) : (cluster += 1) {
+            if (try fat.after(@intCast(cluster)) == 0) return @intCast(cluster);
         }
         return error.DiskFull;
     }
 
-    /// Makes a new file. (No check for a file of the same name: remove
-    /// it first.)
+    /// Whether `count` clusters are free.
+    fn hasRoom(fat: *Fat, count: usize) !bool {
+        var free: usize = 0;
+        var from: u16 = 2;
+        while (free < count) : (free += 1) {
+            from = (fat.findFree(from) catch |err| return if (err == error.DiskFull) false else err) + 1;
+        }
+        return true;
+    }
+
+    /// Makes a new file. Two things are checked before anything is
+    /// written, so that a refusal leaves the disk as it was: that no
+    /// file has this name already, and that the data fits.
     fn create(fat: *Fat, text: []const u8, data: []const u8) !void {
         const raw_name = try fat83(text);
+        if (fat.find(text)) |_| return error.FileExists else |err| if (err != error.FileNotFound) return err;
+        const cluster_bytes = fat.layout.sectors_per_cluster * block_size;
+        if (!try fat.hasRoom((data.len + cluster_bytes - 1) / cluster_bytes)) return error.DiskFull;
         // a directory entry that is free: never used, or deleted
         var slot: ?DirSlot = null;
         var block: [block_size]u8 = undefined;
@@ -390,6 +422,7 @@ test "the layout" {
     try expectEqual(@as(u32, 7), fat.layout.clusterSector(2));
     try expectEqual(@as(u32, 9), fat.layout.clusterSector(3));
     try expectEqual(@as(u32, 27), fat.layout.clusterSector(12));
+    try expectEqual(@as(u32, 60), fat.layout.clusters); // 121 blocks of data: 60 pairs, and one left over
     // a different disk: 4 blocks per cluster, 3 reserved, one FAT of 9, 512 entries
     var boot: [block_size]u8 = @splat(0);
     std.mem.writeInt(u16, boot[11..13], 512, .little);
@@ -405,6 +438,15 @@ test "the layout" {
     try expectEqual(@as(u32, 12), other.root_start);
     try expectEqual(@as(u32, 44), other.data_start);
     try expectEqual(@as(u32, 44 + 4 * 98), other.clusterSector(100));
+    try expectEqual(@as(u32, 0), other.clusters); // no size given yet
+    // a size too big for 16 bits is kept further on: room for 24989
+    // clusters, but a table of 9 blocks only has entries for 2302
+    std.mem.writeInt(u32, boot[32..36], 100_000, .little);
+    try expectEqual(@as(u32, 9 * 256 - 2), (try FatLayout.parse(&boot)).clusters);
+    boot[22] = 200;
+    try expectEqual(@as(u32, (100_000 - 203 - 32) / 4), (try FatLayout.parse(&boot)).clusters);
+    std.mem.writeInt(u16, boot[19..21], 1000, .little); // the 16-bit size wins when it is there
+    try expectEqual(@as(u32, (1000 - 203 - 32) / 4), (try FatLayout.parse(&boot)).clusters);
 }
 
 test "the table is more than one block long" {
@@ -505,6 +547,68 @@ test "deleting, and a file in pieces" {
     defer ta.free(fewer);
     try expectEqual(@as(usize, 2), fewer.len);
     try expectEqualStrings("D.TXT", fewer[1].name());
+}
+
+test "a full disk says so, and stays as it was" {
+    var rig = try Rig.init();
+    defer rig.deinit();
+    var fat = try Fat.mount(&rig.disk);
+    // 60 clusters of 1024 bytes: fill 58
+    const most = pattern(58 * 1024, 6);
+    try fat.create("most.bin", &most);
+    const before = try ta.dupe(u8, rig.card.disk);
+    defer ta.free(before);
+    const too_big = pattern(2 * 1024 + 1, 7);
+    try expectError(error.DiskFull, fat.create("toobig.bin", &too_big));
+    try expectEqualSlices(u8, before, rig.card.disk);
+    try expectError(error.FileExists, fat.create("MOST.BIN", "x"));
+    try expectEqualSlices(u8, before, rig.card.disk);
+    // exactly the last two clusters, 60 and 61, which end at the card's last whole pair of blocks
+    const fits = pattern(2 * 1024, 8);
+    try fat.create("fits.bin", &fits);
+    try expectEqual(@as(u16, 61), try fat.after(60));
+    try expect(try fat.after(61) >= fat_end);
+    const got = try fat.read(ta, "fits.bin");
+    defer ta.free(got);
+    try expectEqualSlices(u8, &fits, got);
+    try expectError(error.DiskFull, fat.create("one.txt", "x"));
+    try fat.create("none.txt", ""); // an empty file needs no cluster
+    try fat.remove("fits.bin");
+    try fat.create("one.txt", "x");
+}
+
+test "entries that are not files" {
+    var rig = try Rig.init();
+    defer rig.deinit();
+    var fat = try Fat.mount(&rig.disk);
+    try fat.create("a.txt", "a");
+    // What a card formatted elsewhere has in its directory: the
+    // volume's label, a piece of a long name, a directory. And a file
+    // whose name has a character that ours never do.
+    var block: [block_size]u8 = undefined;
+    try rig.disk.read(fat.layout.root_start, &block);
+    for ([_]u8{ 0x08, 0x0f, 0x10 }, 1..) |attributes, n| {
+        const raw = block[n * 32 ..][0..32];
+        @memset(raw, 0);
+        @memcpy(raw[0..11], if (attributes == 0x0f) "Am.y. .l.o." else "ZIGRAD     ");
+        raw[11] = attributes;
+    }
+    @memset(block[4 * 32 ..][0..32], 0);
+    @memcpy(block[4 * 32 ..][0..11], "ODD.NAMETXT");
+    block[4 * 32 + 11] = 0x20;
+    try rig.disk.write(fat.layout.root_start, &block);
+    try fat.create("b.txt", "b");
+    const files = try fat.list(ta);
+    defer ta.free(files);
+    try expectEqual(@as(usize, 3), files.len);
+    try expectEqualStrings("A.TXT", files[0].name());
+    try expectEqualStrings("ODD.NAME.TXT", files[1].name()); // listed, though no name we can ask for finds it
+    try expectEqualStrings("B.TXT", files[2].name());
+    const got = try fat.read(ta, "b.txt");
+    defer ta.free(got);
+    try expectEqualStrings("b", got);
+    try expectError(error.FileNotFound, fat.read(ta, "zigrad"));
+    try fat.create("zigrad", "now a file"); // the label doesn't take the name
 }
 
 test "a directory of more than one block, and a full one" {
