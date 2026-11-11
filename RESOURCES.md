@@ -102,6 +102,19 @@ The best books, courses, videos, articles and papers to go with this course, gro
 - [The Ultra-Scale Playbook (Hugging Face)](https://huggingface.co/spaces/nanotron/ultrascale-playbook): data, tensor, pipeline and context parallelism and ZeRO, with thousands of measured experiments. [chapter 26]
 - [Machine Learning Engineering Open Book (Stas Bekman)](https://github.com/stas00/ml-engineering): the practical side of training big models: hardware, networking, debugging.
 
+## From the transistor up [chapters 42–47]
+
+- [From the Transistor to the Web Browser](https://github.com/geohot/fromthetransistor), George Hotz. The outline Part VII follows, section by section.
+- [The Elements of Computing Systems](https://www.nand2tetris.org/) (nand2tetris), Nisan and Schocken. The same journey with a simpler machine; the best companion to chapters 42–45.
+- *Digital Design and Computer Architecture, ARM Edition*, Harris and Harris. Gates to a multi-cycle ARM processor in Verilog: chapters 42–44 in full depth.
+- The ARM7TDMI data sheet (ARM DDI 0029). The instruction encodings of 214, and the cycle counts 221 mentions.
+- [Crafting Interpreters](https://craftinginterpreters.com/), Robert Nystrom, and [chibicc](https://github.com/rui314/chibicc), Rui Ueyama: a C compiler built one commit at a time, in the same stack-machine style as 224–228.
+- *Linkers and Loaders*, John Levine ([drafts online](https://www.iecc.com/linker/)). Relocations (229) and dynamic linking (244).
+- [Operating Systems: Three Easy Pieces](https://pages.cs.wisc.edu/~remzi/OSTEP/), Arpaci-Dusseau. Free. Traps, scheduling, page tables and TLBs: chapter 46. And [xv6](https://pdos.csail.mit.edu/6.828/2023/xv6.html), a whole teaching kernel to read next.
+- Microsoft's *FAT: General Overview of On-Disk Format* and the SD Association's *Physical Layer Simplified Specification*: the two documents behind 238 and 239.
+- [RFC 791](https://www.rfc-editor.org/rfc/rfc791) (IP), [RFC 9293](https://www.rfc-editor.org/rfc/rfc9293) (TCP), [RFC 1071](https://www.rfc-editor.org/rfc/rfc1071) (the checksum), [RFC 1945](https://www.rfc-editor.org/rfc/rfc1945) (HTTP/1.0): 241–245. The RFCs are more readable than their reputation.
+- *TCP/IP Illustrated, Volume 1*, W. Richard Stevens. What 242 leaves out: windows and congestion control.
+
 ## Papers
 
 The original papers behind the exercises, all free on arXiv. They're easier to read AFTER doing the exercise.

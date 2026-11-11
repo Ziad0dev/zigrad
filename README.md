@@ -2,18 +2,18 @@
 
 A zero-to-hero course on [tinygrad](https://github.com/tinygrad/tinygrad), on deep learning, and on the maths underneath both, taught by rebuilding it all in Zig one small broken program at a time. The format follows [ziglings](https://codeberg.org/ziglings/exercises).
 
-There are 208 exercises in six parts, with a checkpoint after each part. Each exercise teaches a single idea in its comments, then leaves you a hole or a bug to fix. Fix it and the tests at the bottom pass. Each checkpoint asks you to write, from memory, functions from all over the part you just finished. You don't need any maths beyond school algebra, or any prior Zig: both are introduced as they come up.
+There are 245 exercises in seven parts, with a checkpoint after each part. Each exercise teaches a single idea in its comments, then leaves you a hole or a bug to fix. Fix it and the tests at the bottom pass. Each checkpoint asks you to write, from memory, functions from all over the part you just finished. You don't need any maths beyond school algebra, or any prior Zig: both are introduced as they come up.
 
-Parts I–IV teach the ideas with small, made-up IRs. Part V rebuilds tinygrad as it is today, with its real UOps, the UIR text format, rangeify and its code generator, the way George Hotz's [10-411](https://10-411.com/) course specifies them. Part VI runs machine learning kernels on a real NVIDIA GPU; without one, its tests compile the kernels and then skip.
+Parts I–IV teach the ideas with small, made-up IRs. Part V rebuilds tinygrad as it is today, with its real UOps, the UIR text format, rangeify and its code generator, the way George Hotz's [10-411](https://10-411.com/) course specifies them. Part VI runs machine learning kernels on a real NVIDIA GPU; without one, its tests compile the kernels and then skip. Part VII builds the machine underneath, and then everything on top of it: gates, Verilog, an ARM processor that boots, a C compiler and linker, an operating system, TCP and a text web browser, following George Hotz's [From the Transistor to the Web Browser](https://github.com/geohot/fromthetransistor).
 
 ## Getting started
 
-You need **Zig 0.16.0** ([download](https://ziglang.org/download/)).
+You need **Zig 0.16.0** ([download](https://ziglang.org/download/)). Part VII also wants [Icarus Verilog](https://steveicarus.github.io/iverilog/) (`iverilog`, in every package manager) to simulate its hardware; without it, those tests skip.
 
 Or, with [Nix](https://nixos.org/download/) (flakes enabled), get it from the dev shell in this repo:
 
 ```sh
-nix develop               # zig 0.16.0, python3, and real tinygrad ready to import (TINYGRAD.md)
+nix develop               # zig 0.16.0, python3, iverilog, and real tinygrad ready to import (TINYGRAD.md)
 ```
 
 With [direnv](https://direnv.net/) (plus [nix-direnv](https://github.com/nix-community/nix-direnv) for caching), run `direnv allow` once in the repo and the shell loads by itself every time you `cd` in.
@@ -55,7 +55,7 @@ The course has three levels of difficulty, on purpose. Filling a blank in code t
 |---|---|---|
 | Fill in | `exercises/`, `zig build` | Complete a few expressions in finished code. Start here for anything new to you. |
 | Hard mode | `hard/`, `zig build -Dhard` | Every function that had a blank has lost its whole body. Same tests, same hints. Progress is tracked separately, so you can do both. |
-| Checkpoints | `c1` to `c6`, in the normal run after each part | No blanks and nothing new: five functions from five different chapters, written from memory. |
+| Checkpoints | `c1` to `c7`, in the normal run after each part | No blanks and nothing new: five functions from five different chapters, written from memory. |
 
 Some habits that the research on learning supports, and that this format makes easy:
 
@@ -69,7 +69,7 @@ These feel slower and harder than rereading. That is the point: the difficulty i
 
 ## Learning paths
 
-208 exercises is a lot. You don't have to do them in one straight line:
+245 exercises is a lot. You don't have to do them in one straight line:
 
 | If you want to... | Do |
 |---|---|
@@ -79,7 +79,8 @@ These feel slower and harder than rereading. That is the point: the difficulty i
 | write fast kernels | chapters 1–4 and 8–10 (001–025, 040–053), then 14–15 (071–081), 28–29 (146–155), 31–32 (161–170), 38 (196–200) and Part VI (201–208) |
 | understand modern LLMs | chapters 1–7 (001–039), 16–17 (082–095), 22 (116–120), 27 (141–145) and 33–34 (171–180) |
 | build an ML compiler (George Hotz's [Compilers for Machine Learning](https://10-411.com/), CMU 10-411) | chapters 1–8 (001–043) for the ideas, then Part V (181–200) for the real IR, UIR, rangeify and codegen, Part VI (201–208) for GPUs, and the [final project](project/README.md), which maps every week of the course to the exercises |
-| everything | 001 to 208 in order: each part builds on the ones before |
+| understand the machine underneath (gates, a CPU in Verilog, a C compiler, an operating system, TCP) | Part VII (209–245). It needs none of the earlier parts, only the Zig that 001–010 teach |
+| everything | 001 to 245 in order |
 | the most challenge | `zig build -Dhard` from the start, dropping back to `exercises/` only for a file that defeats you |
 
 Later exercises point back to the earlier ones they use (for example "softmax (018)"), so if you skip ahead and meet something unfamiliar, the number tells you where it's taught. `zig build -Dn=N` checks a single exercise.
@@ -156,6 +157,21 @@ Later exercises point back to the earlier ones they use (for example "softmax (0
 | 40. ML kernels | 203–207 | reductions with atomics, shared-memory trees and warp shuffles; naive, tiled and register-blocked matmuls; tensor cores with `mma.sync` and its fragment layouts; flash attention with an online softmax; a convolution, direct and blocked over output channels |
 | 41. The whole stack | 208 | Part V's compiler meets Part VI's driver: a tensor graph goes through rangeify, comes out as CUDA kernels with the output ranges as the grid, and runs on your GPU |
 
+## Part VII: from the transistor
+
+The other direction: down from the kernel to the gates it runs on, and then back up through a C compiler, an operating system and a network stack to a web browser. It follows George Hotz's outline [From the Transistor to the Web Browser](https://github.com/geohot/fromthetransistor), section by section. The hardware is Verilog, held in Zig strings and run in Icarus Verilog by the tests, and it is checked the way real chips are: against a software model, instruction by instruction.
+
+| Chapter | Exercises | You learn |
+|---|---|---|
+| 42. Cheating our way past the transistor | 209–210 | nMOS and pMOS as switches; CMOS pull-up and pull-down networks; every gate and an adder from NANDs; lookup tables and flip-flops, the two things an FPGA is made of |
+| 43. Bringup | 211–213 | Verilog: `always @(posedge clk)`, `<=`, counters, a blinking LED; a UART transmitter and a receiver that samples mid-bit; an echo board and memory-mapped pins |
+| 44. What is a processor anyway? | 214–223 | the ARM instruction encoding; a two-pass assembler with labels and literal pools, judged against LLVM's; an ALU with its four flags and a barrel shifter; an emulator; the same datapath in gates; a multi-cycle CPU in Verilog, co-simulated against the emulator on thousands of random instructions; loads and stores; a system on a chip with RAM and the UART on its bus; a boot ROM that downloads a program over the serial port and runs it |
+| 45. A "high" level language | 224–232 | a C compiler in five steps: lexer, precedence-climbing parser, statements and scopes, a stack-machine code generator with frames and the ARM calling convention, and pointers and arrays as a lowering pass; a linker with symbols and relocations; a libc written in C and compiled by your compiler (division, strings, printing, malloc); Ethernet frames and a CRC-32 in gates; a bootloader in C that checks what it loads |
+| 46. An operating system | 233–240 | kernel and user mode, traps and the way back; virtual memory with a software-filled TLB, in Zig and in gates; a kernel in C with system calls, processes, a round-robin scheduler and a timer; an address space and page table per process, with demand loading; SPI and an SD card driver; FAT; a shell |
+| 47. A browser | 241–245 | IP and TCP headers and the Internet checksum; TCP itself: the handshake, sequence numbers, acknowledgements and retransmission over a wire that loses, damages and reorders packets; a telnet daemon in front of your shell; dynamic linking with a PLT and lazy binding; HTTP and an HTML-to-text renderer |
+
+Where each layer runs: the hardware (209–223, and the gates in 231, 234 and 238) is Verilog in Icarus Verilog. The C of chapters 45 and 46 is compiled by the compiler you write, and runs on your emulator; the libc, the bootloader and the shell also run on your Verilog computer. Two simplifications against the outline are worth knowing about. The privileged side of the processor (modes, traps, the TLB) exists in the emulator, with the TLB lookup alone also in gates, so the kernel runs on the emulator and not yet on the Verilog CPU. And the file system, the network stack and the browser are Zig on your own machine, tested against models of the card and the wire, where the outline has them in C on the computer itself. Every piece they would need there is built; joining them is the natural project to follow this part.
+
 Want the whole picture before you start? `examples/tinygrad_in_one_file.zig` puts Part I's core together in about 500 lines:
 
 ```sh
@@ -195,7 +211,7 @@ python3 tools/check_allowlist.py   # every allowlisted mutant matches exactly on
 
 `tools/mutate.py` takes each hole's answer, makes one small mistake in it (a flipped operator, a constant off by one, swapped arguments, a dropped line), and checks that the exercise's tests then fail. A mistake that passes is either a gap in the tests or an equivalent answer; the known equivalent ones are listed, with the reason, in `tools/mutants_ok.txt`. Run it on any exercise you change.
 
-GitHub Actions runs all of these on every push (`.github/workflows/check.yml`): mutation testing on the templates a change touches, and on everything once a week. CI has no GPU, so Part VI's tests compile their kernels there and skip the rest.
+GitHub Actions runs all of these on every push (`.github/workflows/check.yml`): mutation testing on the templates a change touches, and on everything once a week. CI has no GPU, so Part VI's tests compile their kernels there and skip the rest. It has no Icarus Verilog yet either, so there Part VII's hardware tests skip too, and only run in full on your machine.
 
 `hard/` needs no extra writing: `gen.py` takes each function that contains a hole and replaces its whole body with one hole (functions longer than 40 lines keep their fill-in holes). Checkpoints are ordinary templates named `c1_...`, whose holes are whole function bodies.
 
