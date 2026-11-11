@@ -40,7 +40,8 @@ fn lineOf(addr: usize) usize {
 }
 
 /// Thread i writes one 8-byte counter at byte offset i * stride.
-/// How many cache lines are written by two or more threads?
+/// How many cache lines are written by two or more threads? (Counters
+/// must lie in the first 256 lines, 16 KiB.)
 fn sharedLines(threads: usize, stride: usize) usize {
     ???; // write this function's body
 }

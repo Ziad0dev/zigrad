@@ -32,6 +32,9 @@ const std = @import("std");
 
 const Stats = struct { min: f64, median: f64, mean: f64 };
 
+/// Statistics of `times`, leaving out the first `warmup` runs (there must
+/// be at least one left). For an even number of runs the median is the
+/// average of the two middle ones.
 fn stats(alloc: std.mem.Allocator, times: []const f64, warmup: usize) !Stats {
     ???; // write this function's body
 }

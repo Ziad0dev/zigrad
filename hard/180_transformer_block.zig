@@ -25,7 +25,9 @@
 // whole sequence at once (how training works) must give EXACTLY the same
 // outputs as feeding tokens one at a time through the KV cache (how
 // generation works). Getting RoPE's positions or the cache wrong breaks it
-// immediately.
+// immediately. (Almost: positions all off by one would give the same
+// attention, since RoPE only sees how far apart two tokens are. The test
+// checks the cached keys too.)
 //
 // YOUR TASK: the two residual connections, RoPE on q and k, and the cache.
 //
@@ -185,6 +187,13 @@ test "generation with a KV cache equals the full-sequence forward pass" {
         for (out, full[i]) |a, b| try std.testing.expectApproxEqAbs(b, a, 1e-12);
     }
     try std.testing.expectEqual(6, cache.len);
+    // The comparison above can't see a position that is off by the same
+    // amount for q and k (RoPE only sees how far apart they are), so look
+    // at what the cache holds: token i's key, turned by exactly i.
+    for (xs, 0..) |x, i| {
+        const want = rope(matvec(d, d, &w.wk, rmsnorm(x, w.g1)), i);
+        for (cache.k[i], want) |a, b| try std.testing.expectApproxEqAbs(b, a, 1e-12);
+    }
 }
 
 test "the first token only sees itself" {
