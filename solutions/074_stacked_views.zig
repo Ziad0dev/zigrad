@@ -60,8 +60,9 @@ fn canMerge(v: View, k: usize) bool {
 
 /// Can the whole view become one flat dimension with a single stride?
 fn canFlatten(v: View) bool {
-    for (0..v.shape.len - 1) |k| {
-        if (!canMerge(v, k)) return false;
+    // a scalar (no axes) is trivially flat
+    for (1..@max(v.shape.len, 1)) |k| {
+        if (!canMerge(v, k - 1)) return false;
     }
     return true;
 }
@@ -85,6 +86,7 @@ fn flatten(v: View, out: []i64) void {
 
 test "what merges" {
     try std.testing.expect(canFlatten(.{ .shape = &.{ 2, 3, 4 }, .strides = &.{ 12, 4, 1 } }));
+    try std.testing.expect(canFlatten(.{ .shape = &.{}, .strides = &.{} })); // a scalar
     try std.testing.expect(!canFlatten(.{ .shape = &.{ 3, 2 }, .strides = &.{ 1, 3 } })); // transposed
     try std.testing.expect(!canFlatten(.{ .shape = &.{ 2, 3 }, .strides = &.{ 0, 1 } })); // expanded
     // columns 1..3 of a [2, 3]: rows start 3 apart, but only 2 wide

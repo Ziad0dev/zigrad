@@ -210,6 +210,8 @@ test "only glue a number back to ITSELF" {
     try check(&g, "(((y // 3) * 3) + (x % 3))", g.add(g.mul(g.idiv(y, g.c(3)), g.c(3)), g.mod(x, g.c(3))), &.{ x, y });
     // a different divisor
     try check(&g, "(((x // 2) * 3) + (x % 3))", g.add(g.mul(g.idiv(x, g.c(2)), g.c(3)), g.mod(x, g.c(3))), &.{x});
+    // a different operation: a remainder where the quotient should be
+    try check(&g, "(((x % 3) * 3) + (x % 3))", g.add(g.mul(g.mod(x, g.c(3)), g.c(3)), g.mod(x, g.c(3))), &.{x});
 }
 
 test "ranges make things vanish" {
@@ -219,6 +221,8 @@ test "ranges make things vanish" {
     const b = g.variable("b", 0, 3);
     try check(&g, "b", g.mod(b, g.c(8)), &.{b});
     try check(&g, "0", g.idiv(b, g.c(8)), &.{b});
+    try check(&g, "0", g.idiv(b, g.c(4)), &.{b}); // b is at most 3: just below 4
+    try check(&g, "(b // 3)", g.idiv(b, g.c(3)), &.{b}); // but 3 // 3 is 1
     try check(&g, "(b % 3)", g.add(g.mul(g.mod(b, g.c(3)), g.c(1)), g.c(0)), &.{b});
     // not simplifiable: b % 3 really can wrap
     try check(&g, "((b + 2) % 3)", g.mod(g.add(b, g.c(2)), g.c(3)), &.{b});

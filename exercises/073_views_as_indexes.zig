@@ -22,6 +22,12 @@
 // storing View objects at all.) Masks (014) work the same way, as a
 // "valid" condition expression, like 1 <= i && i < 4, next to the index.
 //
+// One thing to know about 072's rules: they look for a constant on the
+// RIGHT of a multiply (x * 3, not 3 * x), and they glue the newest term
+// onto the right of the sum. So write each term as `i_k * stride`, and
+// add it to what you have as `pos + term`; the tests compare the
+// rendered result, which depends on that order.
+//
 // YOUR TASK: finish viewIndex().
 //
 const std = @import("std");
