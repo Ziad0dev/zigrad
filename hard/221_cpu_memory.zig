@@ -131,6 +131,10 @@ test "summing an array: three addressing modes" {
         \\        ldr   r9, [r8]
         \\        ldr   r10, [r8, #-12]       @ numbers[3], from the other side
         \\        ldr   r6, [r6]              @ rn and rd the same: the load wins
+        \\        ldr   r11, =numbers
+        \\        ldr   r11, [r11], #4        @ ...also when rn is written back: rd gets the load
+        \\        ldr   r12, =numbers
+        \\        ldr   r12, [r12, #8]!       @ (real ARMs call these "unpredictable": ours decide)
         \\        swi   0
         \\numbers: .word 0x102, 0x304, 0x506, 0x708
         \\result: .word 0
@@ -1673,7 +1677,10 @@ const Cosim = struct { instructions: usize, cycles: usize };
 
 /// Runs the assembly `source` on the Verilog CPU and on 218's emulator,
 /// from address 0, until a swi, and checks that they agree after every
-/// instruction.
+/// instruction. Stay inside what 218's emulator implements (what 216's
+/// assembler writes): the Verilog CPU decodes some other bit patterns
+/// too (a multiply with bit 21 set, a compare without S), and the two
+/// would part ways there.
 fn cosim(cpu_verilog: []const u8, source: []const u8) !Cosim {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -1702,6 +1709,13 @@ fn cosim(cpu_verilog: []const u8, source: []const u8) !Cosim {
         const event = cpu.step(&board);
         const line = lines.next() orelse "(nothing: the simulation ended)";
         if (event != .ok) {
+            if (event != .swi) {
+                // not the end of the program: an instruction the emulator
+                // doesn't do (a test that strays outside the subset both
+                // CPUs implement), or a bad address
+                std.debug.print("\nafter {d} instructions the emulator stopped ({any}) at pc 0x{x}, instruction 0x{x:0>8}\n", .{ count, event, pc, insn });
+                return error.CpusDisagree;
+            }
             // the emulator has reached the swi: so must the Verilog have
             if (std.mem.startsWith(u8, line, "halted ")) {
                 return .{ .instructions = count, .cycles = try std.fmt.parseInt(usize, line["halted ".len..], 10) };

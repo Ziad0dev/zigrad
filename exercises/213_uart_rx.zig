@@ -182,7 +182,7 @@ const echo_bench =
     \\  endtask
     \\  initial #20000 $finish;   // a broken design must not run forever
     \\  initial begin
-    \\    send("h"); send("i"); send("1"); send("0"); send("1");
+    \\    send("1"); send("h"); send("1"); send("k"); send("0"); send("k");
     \\    repeat (60) @(negedge clk);
     \\    $write("\n");
     \\    $finish;
@@ -205,8 +205,11 @@ test "receiving bytes, ignoring a glitch and a broken frame" {
 }
 
 test "a sender whose clock runs 4% fast still gets through" {
-    // The sender's bits last 24 of our cycles where we expect 25. By the
-    // stop bit we sample 10 cycles early, and are still inside the bit.
+    // The sender's bits last 24 of our cycles where we expect 25. We
+    // sample the middle of each bit by OUR clock, so we fall a cycle
+    // further behind with every bit: by the stop bit, which the sender
+    // holds from cycle 216 to 240, we sample at about 237, 9 cycles late
+    // and still inside the bit.
     const src = comptime blk: {
         var s: []const u8 = uart_rx_module ++ rx_bench;
         s = replace(s, "uart_rx #(.CLKS_PER_BIT(8))", "uart_rx #(.CLKS_PER_BIT(25))");
@@ -238,8 +241,12 @@ test "the echo board" {
     }
     const echoed = try decodeUart(ta, wave.items, 4);
     defer ta.free(echoed);
-    try std.testing.expectEqualStrings("hi101", echoed);
-    try std.testing.expectEqualStrings("0101", leds.items); // off at power-up, then 1, 0, 1
+    try std.testing.expectEqualStrings("1h1k0k", echoed);
+    // Off at power-up, on at the first "1", off at the "0". Every other
+    // byte is echoed but leaves the LED alone: "h" and "k" aren't
+    // commands (though "k", 0x6b, is odd), and the second "1" changes
+    // nothing.
+    try std.testing.expectEqualStrings("010", leds.items);
 }
 
 // ─── Finished code from earlier exercises ─────────────────────────────

@@ -323,6 +323,69 @@ test "a line comes in, and goes back out reversed" {
     try expectOutputs(reverse, "\n", "\n", "\n");
 }
 
+test "only a write of the low byte of register 0 sends" {
+    // Stores to the status and receive registers, a store to byte 1 of
+    // register 0, and a load from register 0: none of them may send. Then
+    // one real send. (On the SoC only: the emulator's UART stops a
+    // program that does these odd things.)
+    var line: usize = 0;
+    var prog = try assemble(ta,
+        \\        mov   r1, #0x10000000
+        \\        mov   r0, #88             @ "X"
+        \\        str   r0, [r1, #4]
+        \\        str   r0, [r1, #8]
+        \\        strb  r0, [r1, #1]
+        \\        ldr   r2, [r1]
+        \\        mov   r0, #89             @ "Y"
+        \\        bl    putc
+        \\        swi   0
+        \\
+    ++ putc_asm, 0, &line);
+    defer prog.deinit(ta);
+    const sent = try runOnSoc(ta, prog.code, "");
+    defer ta.free(sent);
+    try expectEqualStrings("Y", sent);
+}
+
+test "a byte that arrives just as the last one is taken is kept" {
+    // The program does nothing but read the receive register. The bench
+    // waits for a cycle in which it is doing so, and makes a new byte
+    // arrive in that very cycle: rx_have must end up 1.
+    var line: usize = 0;
+    var prog = try assemble(ta,
+        \\        mov   r1, #0x10000000
+        \\again:  ldr   r0, [r1, #8]
+        \\        b     again
+    , 0, &line);
+    defer prog.deinit(ta);
+    var bench: std.Io.Writer.Allocating = .init(ta);
+    defer bench.deinit();
+    try bench.writer.writeAll(soc_bench_head);
+    var at: usize = 0;
+    while (at < prog.code.len) : (at += 4) try bench.writer.print("    dut.ram[{d}] = 32'h{x};\n", .{ at / 4, std.mem.readInt(u32, prog.code[at..][0..4], .little) });
+    try bench.writer.writeAll(
+        \\    repeat (2) @(negedge clk);
+        \\    reset = 0;
+        \\    repeat (10) @(negedge clk);
+        \\    while (!dut.taking) @(negedge clk);
+        \\    force dut.rx_valid = 1;
+        \\    force dut.rx_data = 8'h5a;
+        \\    @(negedge clk);
+        \\    release dut.rx_valid;
+        \\    release dut.rx_data;
+        \\    $display("\nhave %b byte %h", dut.rx_have, dut.rx_byte);
+        \\    $finish;
+        \\  end
+        \\endmodule
+        \\
+    );
+    const source = try std.mem.concat(ta, u8, &.{ datapath_modules, arm_cpu, uart_tx_module, uart_rx_module, soc_module, bench.written() });
+    defer ta.free(source);
+    const out = try simulateOrSkip(ta, source);
+    defer ta.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "have 1 byte 5a") != null);
+}
+
 test "a byte that nobody has taken yet waits in its register" {
     // The program is busy for a long time before it first looks: two
     // bytes have arrived by then, and with one register only the second

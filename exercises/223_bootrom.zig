@@ -31,7 +31,11 @@
 // in memory low byte first too, *little-endian*, which is why `.word`
 // and the length here look the same on the wire.
 //
-// The ROM is ARM assembly, and writing it is the exercise. What you have:
+// The ROM is ARM assembly, and writing it is the exercise. Each piece is
+// pasted between others, so end each with a newline (a last `\\` line
+// with nothing on it), or its last instruction runs into the next line's
+// label. (A program of length 0 isn't allowed: the copy loop runs once
+// before it checks.) What you have:
 //
 //     bl getc              the next byte from the cable, in r0 (222)
 //     bl putc              sends r0

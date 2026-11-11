@@ -148,7 +148,9 @@ test "decoding a waveform by hand" {
     const out = try decodeUart(ta, "111" ++ "00" ++ "11" ++ "00" ++ "00" ++ "00" ++ "00" ++ "00" ++ "11" ++ "00" ++ "11" ++ "1", 2);
     defer ta.free(out);
     try std.testing.expectEqualStrings("A", out);
-    // at 4 cycles per bit, the same wire reads differently: timing is the protocol
+    // The same "A" at 4 cycles per bit is a different waveform, twice as
+    // long: the receiver must be told the speed, because timing is the
+    // protocol.
     const slow = try decodeUart(ta, "1" ++ "0000" ++ "1111" ++ "0000" ** 5 ++ "1111" ++ "0000" ++ "1111", 4);
     defer ta.free(slow);
     try std.testing.expectEqualStrings("A", slow);
