@@ -75,6 +75,8 @@ fn rmsNorm(x: []const f64, g: []const f64, y: []f64) void {
 /// likely tokens whose probabilities add up to at least p, zero the rest,
 /// and renormalize what's kept so it sums to 1. Returns how many were
 /// kept. There are at most 64 tokens, and no two are equally likely.
+/// (Stop when every token is kept, too: with p = 1, the rounding in a
+/// sum of 64 probabilities can leave it a hair under 1 forever.)
 fn topP(probs: []f64, p: f64) usize {
     //⟪
     var kept = [_]bool{false} ** 64;

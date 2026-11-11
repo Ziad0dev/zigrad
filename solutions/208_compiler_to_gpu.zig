@@ -28,6 +28,13 @@
 // neighbouring addresses: coalesced (202), and the reason tinygrad maps
 // its dims in reverse (198).
 //
+// (A subtlety: with a MOD on r0 too, a spare thread past the end wraps
+// around onto a real element and computes it a second time, writing the
+// same value. So in these kernels a missing guard costs work, not
+// correctness, and only the rendered text shows it. Keep the guard: a
+// kernel that accumulates into memory, or tinygrad's, which has no MOD
+// on its outermost index, would go wrong without it.)
+//
 // A REDUCE's range stays a loop, inside each thread. The body of the
 // kernel is rendered by 195's CRender, unchanged: C is C.
 //
@@ -195,11 +202,13 @@ test "three output axes: each range from gid, last one fastest" {
     try t.expect(std.mem.indexOf(u8, c, "int r2 = (gid / 1) % 4;") != null);
 }
 
-test "softmax: three kernels from your compiler, on the GPU" {
+test "softmax's shape, three kernels from your compiler, on the GPU" {
+    // (x - max) / sum(x - max): softmax's structure, a max, a broadcast,
+    // a sum and a divide, without the exp, which our UIR doesn't have
     var arena = std.heap.ArenaAllocator.init(t.allocator);
     defer arena.deinit();
     var g = Graph.init(arena.allocator());
-    const n = 1000; // not a multiple of 256: the guard matters
+    const n = 1000; // not a multiple of 256: the last block has spare threads
     const x = g.buffer(0, .f32, n);
     const m = try g.reduce(x, .max, 1);
     const d = try g.add(x, try g.mul(try g.expand(m, &.{n}), try g.expand(g.float(-1), &.{n})));

@@ -165,6 +165,7 @@ test "the candidates follow the rules" {
     // from (i 16, j 16), there's no room for more upcasts, only unrolls
     options.clearRetainingCapacity();
     s.next(.{ .up_i = 16, .up_j = 16 }, &options);
+    try t.expectEqual(3, options.items.len);
     for (options.items) |o| try t.expectEqual(256, o.up_i * o.up_j);
 }
 
@@ -211,6 +212,9 @@ test "the search logic, on a made-up clock" {
     var wide = try fakeSearch(&g, &fiveEach);
     _ = try wide.beam(3, 1);
     try t.expect(wide.timed > narrow.timed);
+    // a beam wider than there are candidates keeps them all
+    var huge = try fakeSearch(&g, &fiveEach);
+    try t.expectEqual(85, (try huge.beam(100, 5)).secs);
 }
 
 test "search, on your machine" {

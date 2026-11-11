@@ -9,7 +9,10 @@
 // Part VI. Try each cold. If you have to look one up, read YOUR finished
 // exercise (its number is in the doc comment), close it, and write it
 // from memory. The kernels are C, with 201's shorthand: KERNEL, SHARED,
-// blockIdx_x, blockDim_x, threadIdx_x, __syncthreads().
+// blockIdx_x, blockDim_x, threadIdx_x, __syncthreads(). Two things that
+// differ from CUDA proper: a SHARED array must be `static` (static SHARED
+// float sh[256];, as in 203), and there is no math.h: no fmaxf, no INFINITY. Write
+// x > y ? x : y, and start a maximum from the first element.
 //
 // YOUR TASK: write blocksFor(), sectorsPerWarp(), aFragment(), and the
 // kernels `relu` and `block_max`.
@@ -24,7 +27,8 @@ fn blocksFor(n: u32, block: u32) u32 {
 /// (202) Coalescing. The 32 threads of a warp each load one f32: thread t
 /// loads element t * stride of an array that starts on a sector boundary.
 /// Memory is served in 32-byte sectors. How many sectors does the warp's
-/// load touch?
+/// load touch? (stride >= 1; stride 0, every thread reading the same
+/// float, would be 1 sector.)
 fn sectorsPerWarp(stride: usize) usize {
     // thread t reads bytes 4 * stride * t ..: a new sector every 32 bytes, at most one per thread
     return @min(32, 4 * stride);

@@ -8,7 +8,7 @@
 // Chapter 40: ML kernels. A reduction is the second kernel shape in deep
 // learning (after elementwise): sums, means, norms, softmax's max and
 // sum. On a GPU, thousands of threads each hold a piece; combining them is
-// the whole problem. Three ways, each faster than the last:
+// the whole problem. Three ways, from slow to fast:
 //
 //   1. atomics: every thread does atomic_add(out, x[i]). Correct, and all
 //      16 million additions to ONE address are serialized by the memory
@@ -20,7 +20,11 @@
 //      fewer blocks than elements.
 //   3. warp shuffles (168): the last 5 steps happen inside one warp of 32
 //      threads, which run in lockstep: shfl_xor reads a neighbour's
-//      register directly. No shared memory, no barriers.
+//      register directly. No shared memory, no barriers. (Expect it to
+//      be about as fast as the tree, not much faster: once there is one
+//      atomic per block, both are limited by reading the 64 MB from
+//      memory, not by the adding. The test only insists that the tree
+//      beats the atomics.)
 //
 // Look at the sums, not just the times. Adding 16 million numbers into
 // ONE f32, one at a time, loses hundreds: once the total is large, each
